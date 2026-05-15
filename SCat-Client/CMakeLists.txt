@@ -54,7 +54,8 @@ add_executable(SCat-Client
       "Scat/src/ScatWindow.cpp"
       "Other/include/Notification.h"                                              
       "Other/src/Notification.cpp" "Other/include/FileWork.h" "Other/src/FileWork.cpp" "Friend/include/AddFriendWindow.h" "Friend/src/AddFriendWindow.cpp" "NoFrame.h" "NoFrame.cpp"
-       "resource.qrc" "NetWork/include/NetWorkManager.h" "NetWork/src/NetWorkManager.cpp" "Friend/include/FriendListitem.h" "Friend/src/FriendListitem.cpp")
+       "resource.qrc" "NetWork/include/NetWorkManager.h" "NetWork/src/NetWorkManager.cpp" "Friend/include/FriendListitem.h" "Friend/src/FriendListitem.cpp" "Other/src/UserSession.cpp"
+        "Other/include/UserSession.h")
 
 # 7. 链接库
 target_link_libraries(SCat-Client PRIVATE

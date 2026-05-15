@@ -14,8 +14,10 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
 
-    RegisterWindow reg;
-    reg.show();
+    LoginWindow log1;
+    log1.show();
+
+    
 
     return app.exec();
 }

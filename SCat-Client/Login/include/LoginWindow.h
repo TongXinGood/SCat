@@ -6,6 +6,7 @@
 #include <QPushButton>
 #include <QWidget>
 #include <QCheckBox>
+#include <QMessageBox>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>

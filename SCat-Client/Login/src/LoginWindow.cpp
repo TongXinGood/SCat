@@ -50,21 +50,25 @@ void LoginWindow::initUI()
 	editaccount = new QLineEdit(login);
 	editaccount->setPlaceholderText("Name");
 	editaccount->setObjectName("InputEdit"); 
+    editaccount->setFixedHeight(40);
 
 	editpwd = new QLineEdit(login);
 	editpwd->setPlaceholderText("Password");
 	editpwd->setEchoMode(QLineEdit::Password); 
 	editpwd->setObjectName("InputEdit");
+    editpwd->setFixedHeight(40);
 
 	checkrem = new QCheckBox("记住密码", login);
 
 	btnLogin = new QPushButton("登录 login", login);
 	btnLogin->setObjectName("BtnLogin"); 
 	btnLogin->setCursor(Qt::PointingHandCursor); 
+    btnLogin->setFixedHeight(44);
 
 	btnRegister = new QPushButton("注册 register", login);
 	btnRegister->setObjectName("BtnRegister"); 
 	btnRegister->setCursor(Qt::PointingHandCursor);
+    btnRegister->setFixedHeight(44);
 
 	btnForgot = new QPushButton("忘记密码？点击这里", login);
 	btnForgot->setObjectName("BtnForgot"); 
@@ -107,8 +111,9 @@ void LoginWindow::initUI()
 
         #InputEdit {
             border: 1px solid #E0E0E0;
-            border-radius: 20px; 
-            padding: 10px 15px;  
+            border-radius: 8px; 
+            padding-left: 15px;
+            padding-right: 15px;
             font-size: 14px;
             background-color: #FAFAFA;
         }
@@ -117,12 +122,13 @@ void LoginWindow::initUI()
             background-color: #FFFFFF;
         }
         #BtnLogin {
-            background-color: #000000;
-            color: #FFFFFF;
-            border-radius: 20px;
-            padding: 12px;
-            font-size: 11px;
-            font-weight: bold;
+        background-color: #000000;
+        color: #FFFFFF;
+        border-radius: 8px;
+        padding-left: 12px;
+        padding-right: 12px;
+        font-size: 14px;
+        font-weight: bold;    
         }
         #BtnLogin:hover { background-color: #333333; }
 
@@ -130,9 +136,10 @@ void LoginWindow::initUI()
             background-color: #EEEEEE;
             color: #333333;
             border: none;
-            border-radius: 20px;
-            padding: 12px;
-            font-size: 12px;
+            border-radius: 8px;
+            padding-left: 12px;
+            padding-right: 12px;
+            font-size: 14px;
         }
         #BtnRegister:hover { background-color: #E0E0E0; }
 
@@ -161,7 +168,7 @@ void LoginWindow::onLoginClicked()
     QString pwd = editpwd->text().trimmed();
     if (account.isEmpty() || pwd.isEmpty())
     {
-        
+        QMessageBox::warning(this, "提示", "账号或密码不能为空");
         return;
     }
     emit sendLoginClicked(account, pwd);
