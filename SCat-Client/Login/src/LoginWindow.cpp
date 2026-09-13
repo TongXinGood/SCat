@@ -171,6 +171,7 @@ void LoginWindow::onLoginClicked()
         QMessageBox::warning(this, "提示", "账号或密码不能为空");
         return;
     }
+    qDebug() << "尝试登录：" << account << pwd;
     emit sendLoginClicked(account, pwd);
 }
 

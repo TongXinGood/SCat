@@ -15,9 +15,11 @@ class LoginWindow :public NoFrame
 {
 	Q_OBJECT
 public:
+	//初始化登陆窗口
 	explicit LoginWindow(QWidget* parent = nullptr);
 	~LoginWindow();
 signals:
+	//发送信号：点击登陆
 	void sendLoginClicked(const QString& account , const QString& pwd);
 	void sendRegisterClicked();
 	void sendForgotpwdClicked();

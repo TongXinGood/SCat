@@ -17,6 +17,7 @@ class ScatWindow : public NoFrame
 public:
     explicit ScatWindow(QWidget* parent = nullptr);
     ~ScatWindow();
+    void setUserInfo(const QString& nickname, const QString& avatar);
 signals:
     // 抛出给上层或控制器的信号
     void sendSettingsClicked();

@@ -177,3 +177,8 @@ void ScatWindow::onChatTextMsgSent(const QString& msg)
 {
     emit sendTextMessage(currentFriendId, msg);
 }
+void ScatWindow::setUserInfo(const QString& nickname, const QString& avatar)
+{
+    lbMyName->setText(nickname);
+    lbMyAvatar->setPixmap(QPixmap(":/Resource/icon/" + avatar));
+}

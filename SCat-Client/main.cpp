@@ -4,20 +4,20 @@
 #include "NoFrame.h"
 #include "Login/include/LoginWindow.h"
 #include "Register/include/RegisterWindow.h"
+#include "Register/include/Register.h"
 #include "Login/include/Login.h"
 #include"Chat/include/ChatWindow.h"
 #include "Friend/include/FriendList.h"
 #include "Scat/include/ScatWindow.h"
-
+#include "NetWork/include/NetWorkManager.h"
+#include "Other/include/AppController.h"
 
 int main(int argc, char* argv[])
 {
-    QApplication app(argc, argv);
+    QApplication a(argc, argv);
 
-    LoginWindow log1;
-    log1.show();
+    AppController app;
+    app.start();
 
-    
-
-    return app.exec();
+    return a.exec();
 }

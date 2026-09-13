@@ -1,0 +1,31 @@
+#pragma once
+
+#include <QObject>
+#include <QTcpSocket>
+#include <QJsonObject>
+#include "../../Protocol.h"
+
+class ClientSession : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit ClientSession(QTcpSocket* sock, QObject* parent = nullptr);
+
+    void sendPacket(quint16 type, const QJsonObject& obj);
+    void close();
+
+    QString peerInfo() const;      // 调试用，返回 "ip:port"
+
+signals:
+    void packetReceived(ClientSession* from, quint16 type, const QJsonObject& obj);
+    void closed(ClientSession* self);
+
+private slots:
+    void onReadyRead();
+    void onDisconnected();
+
+private:
+    QTcpSocket* socket;
+    QByteArray buffer;      // 这条连接私有的拆包缓冲
+};

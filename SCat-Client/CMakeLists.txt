@@ -1,5 +1,6 @@
 ﻿# 1. 升级最低版本 (Qt6 需要 3.16+)
 cmake_minimum_required(VERSION 3.16)
+set(CMAKE_PREFIX_PATH "D:/Qt/6.11.1/msvc2022_64")
 
 # 2. 项目名称
 project(SCat-Client LANGUAGES CXX)
@@ -53,9 +54,9 @@ add_executable(SCat-Client
       "Scat/include/ScatWindow.h"                                              
       "Scat/src/ScatWindow.cpp"
       "Other/include/Notification.h"                                              
-      "Other/src/Notification.cpp" "Other/include/FileWork.h" "Other/src/FileWork.cpp" "Friend/include/AddFriendWindow.h" "Friend/src/AddFriendWindow.cpp" "NoFrame.h" "NoFrame.cpp"
+      "Other/src/Notification.cpp" "Other/include/FileWork.h" "Other/src/FileWork.cpp" "Friend/include/AddFriendWindow.h" "Friend/src/AddFriendWindow.cpp"  "NoFrame.cpp"
        "resource.qrc" "NetWork/include/NetWorkManager.h" "NetWork/src/NetWorkManager.cpp" "Friend/include/FriendListitem.h" "Friend/src/FriendListitem.cpp" "Other/src/UserSession.cpp"
-        "Other/include/UserSession.h")
+        "Other/include/UserSession.h"  "Protocol.h" "NoFrame.h" "NoFrame.cpp" "Other/include/AppController.h" "Other/src/AppController.cpp")
 
 # 7. 链接库
 target_link_libraries(SCat-Client PRIVATE

@@ -1,4 +1,5 @@
 ﻿#include "../include/RegisterWindow.h"
+#include <QMessageBox>
 
 RegisterWindow::RegisterWindow(QWidget* parent):NoFrame(parent)
 {
@@ -178,6 +179,7 @@ void RegisterWindow::onRegisterClicked()
 	QString pwd1=pwd->text().trimmed();
 	if (account1.isEmpty() || pwd1.isEmpty())
 	{
+        QMessageBox::warning(this, "提示", "账号或密码不能为空");
 		return;
 	}
 	emit sendRegisterClicked(account1, pwd1);
