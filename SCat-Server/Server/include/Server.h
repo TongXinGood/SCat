@@ -4,6 +4,7 @@
 #include <QTcpServer>
 #include <QList>
 #include <QJsonObject>
+#include <QHash>
 
 class ClientSession;
 class Database;
@@ -28,4 +29,5 @@ private:
     QTcpServer* server;
     QList<ClientSession*> sessions;
     Database* db;
+    QHash<QString, ClientSession*> onlineUsers;
 };

@@ -16,7 +16,9 @@ public:
     void close();
 
     QString peerInfo() const;      // 调试用，返回 "ip:port"
-
+    void setUser(const QString& name);
+    bool isLogined() const { return !userName.isEmpty(); }
+    QString username() const { return userName; }
 signals:
     void packetReceived(ClientSession* from, quint16 type, const QJsonObject& obj);
     void closed(ClientSession* self);
@@ -28,4 +30,7 @@ private slots:
 private:
     QTcpSocket* socket;
     QByteArray buffer;      // 这条连接私有的拆包缓冲
+    
+
+    QString userName;       // 空 = 未登录
 };

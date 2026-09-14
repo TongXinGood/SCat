@@ -32,6 +32,7 @@ enum ErrCode : int {
 	ERR_USER_EXIST = 1,   // 注册：用户名已存在
 	ERR_USER_NOT_FOUND = 2,   // 登录：用户不存在
 	ERR_WRONG_PASSWORD = 3,   // 登录：密码错误
+	ERR_ALREADY_ONLINE = 4,   // 登录：该账号已在别处登录
 
 	ERR_DB_ERROR = 99,   // 数据库操作失败
 };

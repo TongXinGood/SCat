@@ -13,6 +13,10 @@ ClientSession::ClientSession(QTcpSocket* sock, QObject* parent)
     connect(socket, &QTcpSocket::disconnected,
         this, &ClientSession::onDisconnected);
 }
+void ClientSession::setUser(const QString& name)
+{
+    userName = name;
+}
 
 QString ClientSession::peerInfo() const
 {

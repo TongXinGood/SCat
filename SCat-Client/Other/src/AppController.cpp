@@ -1,4 +1,5 @@
 #include "../include/AppController.h"
+#include "../include/UserSession.h"
 #include <QMessageBox>
 #include <QDebug>
 
@@ -80,8 +81,13 @@ void AppController::showRegisterWindow()
 
 void AppController::onLoginSuccess(const QJsonObject& info)
 {
+    QString username = info["username"].toString();
     QString nickname = info["nickname"].toString();
     QString avatar = info["avatar"].toString();
+
+    // 记住"我是谁"，后面聊天、加好友都要用这个 username
+    UserSession::GetInstance().setUser(username, nickname, avatar);
+    qDebug() << "current user:" << username << nickname;
 
     scatWin = new ScatWindow;
     scatWin->setUserInfo(nickname, avatar);
