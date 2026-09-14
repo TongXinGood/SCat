@@ -117,7 +117,7 @@ void RegisterWindow::initUi()
         /* 3. Create your Account - 图片中是斜体、稍小 */
         #CreateText { 
             font-size: 16px; 
-            font-style: italic; /* 关键：斜体 */
+            
             color: #333; 
             margin-bottom: 15px; 
         }
@@ -136,22 +136,24 @@ void RegisterWindow::initUi()
             background-color:#FFFFFF;
         }
 
-      
-        #BtnRegister {
-            background-color: #F2F2F2; 
-            color: #333333;            
+       #BtnRegister {
+            background-color: #000000;
+            color: #FFFFFF;
             border: none;
-            border-radius: 1px;       
-            font-size: 16px;
+            border-radius: 8px;
+            padding-left: 12px;
+            padding-right: 12px;
+            font-size: 14px;
             font-weight: bold;
-            min-height: 40px;   
+            min-height: 40px;
         }
         #BtnRegister:hover {
-            background-color: #E0E0E0; /* 悬停变色 */
+            background-color: #333333;
         }
         #BtnRegister:pressed {
-            background-color: #D6D6D6; /* 按下变色 */
+            background-color: #1A1A1A;
         }
+        
 
         /* 6. 底部返回按钮 - 小灰字 */
         #BtnReturn {
