@@ -26,6 +26,12 @@ private slots:
 private:
     void handleLogin(ClientSession* from, const QJsonObject& obj);
     void handleRegister(ClientSession* from, const QJsonObject& obj);
+    void handleFriendList(ClientSession* from);
+    void handleChat(ClientSession* from, const QJsonObject& obj);
+
+    void notifyFriendsStatus(const QString& username, bool online);
+
+
     QTcpServer* server;
     QList<ClientSession*> sessions;
     Database* db;

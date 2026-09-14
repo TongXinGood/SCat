@@ -9,6 +9,7 @@
 #include <QTextEdit> 
 #include <QListWidget>
 #include <QKeyEvent> 
+#include "ChatMessage.h"
 
 class ChatWindow : public QWidget
 {
@@ -22,6 +23,8 @@ public:
     void setChatInfo(const QString& name, const QString& status, const QString& avatarPath);
     void addMessage(const QString& msg, bool isSelf);
     void addFileMessage(const QString& fileName, const QString& fileSize, bool isSelf);
+    void setHistory(const QList<ChatMessage>& list);   // 切换好友时整段重绘
+    void appendMessage(const ChatMessage& msg);        // 来一条新的，追加一条
 
 signals:
     void sendTextMsg(const QString& msg);

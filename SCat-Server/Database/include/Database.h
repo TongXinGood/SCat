@@ -6,8 +6,18 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QVariant>
+#include <QList>
 #include <QDebug>
 #include "../../Protocol.h"
+
+struct FriendInfo
+{
+    QString username;
+    QString nickname;
+    QString avatar;
+};
+
+
 class Database : public QObject
 {
     Q_OBJECT
@@ -22,6 +32,7 @@ public:
     int  checkLogin(const QString& username, const QString& password);
     bool getUserInfo(const QString& username,QString& nickname, QString& avatar);
 
+    bool getFriendList(const QString& username, QList<FriendInfo>& list);
 private:
     QSqlDatabase db;
 };

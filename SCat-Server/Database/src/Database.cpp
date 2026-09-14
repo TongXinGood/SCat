@@ -102,3 +102,33 @@ bool Database::getUserInfo(const QString& username,
     avatar = q.value(1).toString();
     return true;
 }
+
+bool Database::getFriendList(const QString& username, QList<FriendInfo>& list)
+{
+    list.clear();
+
+    QSqlQuery q(db);
+    // friends 表存的是双向两行，所以查"我的好友"只要一个条件就够了。
+    // JOIN users 是为了把好友的昵称和头像一起带出来，省得再查一遍
+    q.prepare("SELECT u.username, u.nickname, u.avatar "
+        "FROM friends f "
+        "JOIN users u ON f.friend = u.username "
+        "WHERE f.username = ? "
+        "ORDER BY u.nickname");
+    q.addBindValue(username);
+
+    if (!q.exec()) {
+        qDebug() << "getFriendList failed:" << q.lastError().text();
+        return false;
+    }
+
+    while (q.next()) {
+        FriendInfo info;
+        info.username = q.value(0).toString();
+        info.nickname = q.value(1).toString();
+        info.avatar = q.value(2).toString();
+        list.append(info);
+    }
+
+    return true;
+}

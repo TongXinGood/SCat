@@ -17,9 +17,11 @@ public:
     ~FriendList();
 
     void addFriendItem(const QString& id, const QString& avatarPath, const QString& name, const QString& lastMsg);
-
+    void clearFriends();
+    void updateLastMessage(const QString& id, const QString& msg);
 signals:
     void sendFriendSelected(const QString& friendId, const QString& friendName);
+    void sendFriendUnselected();
     void sendAddFriendClicked();
 
 private slots:
@@ -33,6 +35,7 @@ private:
 
 private:
     QVBoxLayout* mainLayout;
+    QString currentId;
 
     // 搜索区域组合控件
     QWidget* searchContainer;

@@ -137,12 +137,43 @@ void FriendList::onSearchTextChanged(const QString& text)
 void FriendList::onItemClicked(QListWidgetItem* item)
 {
     FriendListItem* customWidget = qobject_cast<FriendListItem*>(listWidget->itemWidget(item));
-    if (customWidget) {
-        emit sendFriendSelected(customWidget->getFriendId(), customWidget->getFriendName());
+    if (!customWidget)
+        return;
+
+    // 再点一次已经选中的那个人 = 取消选中，右边回到默认页
+    if (currentId == customWidget->getFriendId()) {
+        listWidget->clearSelection();
+        listWidget->setCurrentItem(nullptr);
+        currentId.clear();
+        emit sendFriendUnselected();
+        return;
     }
+    currentId = customWidget->getFriendId();
+    emit sendFriendSelected(customWidget->getFriendId(), customWidget->getFriendName());
 }
 
 void FriendList::onAddClicked()
 {
     emit sendAddFriendClicked();
+}
+
+void FriendList::clearFriends()
+{
+    // clear() 会删掉所有 item，setItemWidget 设进去的 FriendListItem
+    // 归视图所有，也会跟着一起销毁，不会泄漏
+    listWidget->clear();
+    currentId.clear();
+}
+
+void FriendList::updateLastMessage(const QString& id, const QString& msg)
+{
+    for (int i = 0; i < listWidget->count(); ++i) {
+        FriendListItem* item = qobject_cast<FriendListItem*>(
+            listWidget->itemWidget(listWidget->item(i)));
+
+        if (item && item->getFriendId() == id) {
+            item->setLastMessage(msg);
+            return;
+        }
+    }
 }

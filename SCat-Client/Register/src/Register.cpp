@@ -59,6 +59,7 @@ void Register::handleRegisterResp(const QJsonObject& obj)
         switch (code) {
         case ERR_USER_EXIST: emit registerFailed("该账号已被注册"); break;
         case ERR_DB_ERROR:   emit registerFailed("服务器错误，请稍后再试"); break;
+        case ERR_INVALID_PARAM: emit registerFailed("账号或密码格式不合法"); break;
         default:             emit registerFailed(QString("注册失败 (code: %1)").arg(code)); break;
         }
     }

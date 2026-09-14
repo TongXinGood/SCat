@@ -23,6 +23,12 @@ enum MsgType :quint16 {
 	MSG_CHAT_REQ = 20,
 	MSG_CHAT_RESP = 21,
 	MSG_CHAT_PUSH = 22,
+
+	//好友相关
+	MSG_FRIEND_LIST_REQ = 30,
+	MSG_FRIEND_LIST_RESP = 31,
+
+	MSG_FRIEND_STATUS_PUSH = 32,
 };
 
 constexpr quint32 MAX_BODY_SIZE = 1024 * 1024;
@@ -33,6 +39,8 @@ enum ErrCode : int {
 	ERR_USER_NOT_FOUND = 2,   // 登录：用户不存在
 	ERR_WRONG_PASSWORD = 3,   // 登录：密码错误
 	ERR_ALREADY_ONLINE = 4,   // 登录：该账号已在别处登录
+	ERR_INVALID_PARAM = 5,    // 参数格式不合法
+	ERR_NOT_LOGIN = 6,		  // 没登录就请求需要身份的接口
 
 	ERR_DB_ERROR = 99,   // 数据库操作失败
 };

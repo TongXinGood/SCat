@@ -309,8 +309,12 @@ void ChatWindow::onReturnPressed()
 {
     QString text = msgEdit->toPlainText().trimmed();
     if (text.isEmpty()) return;
-    addMessage(text, true);
+
+    // 这里不再直接画气泡了。消息要先发给服务端、存进本地，
+    // 再由上层回调 appendMessage 画出来 —— 自己发的和收到的走同一条路径，
+    // 不然发送失败时界面上会留一个假的"已发送"气泡
     emit sendTextMsg(text);
+
     msgEdit->clear();
     QTextCursor cursor = msgEdit->textCursor();
     cursor.movePosition(QTextCursor::Start);
@@ -333,4 +337,19 @@ void ChatWindow::setChatInfo(const QString& name, const QString& status, const Q
     lbName->setText(name);
     lbStatus->setText(status);
     lbAvatar->setPixmap(QPixmap(avatarPath).scaled(45, 45, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+}
+
+void ChatWindow::setHistory(const QList<ChatMessage>& list)
+{
+    msgList->clear();
+
+    for (const ChatMessage& msg : list)
+        addMessage(msg.content, msg.isSelf);
+
+    msgList->scrollToBottom();
+}
+
+void ChatWindow::appendMessage(const ChatMessage& msg)
+{
+    addMessage(msg.content, msg.isSelf);
 }

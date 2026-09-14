@@ -40,23 +40,22 @@ add_executable(SCat-Client
     "Register/src/RegisterWindow.cpp"
      "Register/src/Register.cpp"   
      "Friend/include/FriendList.h" 
-     "Friend/include/AddFriend.h" 
-     "Friend/src/AddFriend.cpp"
      "Friend/src/FriendList.cpp" 
-     "Friend/include/DeleteFriend.h" 
-     "Friend/src/DeleteFriend.cpp" 
-     "Friend/include/SearchFriend.h" 
-     "Friend/src/SearchFriend.cpp" 
+     "Friend/include/FriendManager.h"
+     "Friend/src/FriendManager.cpp"
      "Chat/include/ChatWindow.h" 
      "Chat/src/ChatWindow.cpp" 
      "Chat/include/ChatNetWork.h" 
-     "Chat/src/ChatNetWork.cpp"       
+     "Chat/src/ChatNetWork.cpp"
+     "Chat/include/ChatMessage.h"
+     "Chat/include/ChatStorage.h"
+     "Chat/src/ChatStorage.cpp"
       "Scat/include/ScatWindow.h"                                              
       "Scat/src/ScatWindow.cpp"
       "Other/include/Notification.h"                                              
       "Other/src/Notification.cpp" "Other/include/FileWork.h" "Other/src/FileWork.cpp" "Friend/include/AddFriendWindow.h" "Friend/src/AddFriendWindow.cpp"  "NoFrame.cpp"
        "resource.qrc" "NetWork/include/NetWorkManager.h" "NetWork/src/NetWorkManager.cpp" "Friend/include/FriendListitem.h" "Friend/src/FriendListitem.cpp" "Other/src/UserSession.cpp"
-        "Other/include/UserSession.h"  "Protocol.h" "NoFrame.h" "NoFrame.cpp" "Other/include/AppController.h" "Other/src/AppController.cpp")
+        "Other/include/UserSession.h"  "Protocol.h" "NoFrame.h" "NoFrame.cpp" "Other/include/AppController.h" "Other/src/AppController.cpp" )
 
 # 7. 链接库
 target_link_libraries(SCat-Client PRIVATE

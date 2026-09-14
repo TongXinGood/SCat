@@ -11,6 +11,9 @@ AppController::AppController(QObject* parent)
     , loginWin(nullptr)
     , regWin(nullptr)
     , scatWin(nullptr)
+    , friendMgr(nullptr)
+    , chatNet(nullptr)
+    , storage(nullptr)
 {
     // 网络层
     net = new NetWorkManager(this);
@@ -18,12 +21,22 @@ AppController::AppController(QObject* parent)
     // 业务层（注入网络）
     loginLogic = new Login(net, this);
     regLogic = new Register(net, this);
+    friendMgr = new FriendManager(net, this);
+    chatNet = new ChatNetWork(net, this);
+    storage = new ChatStorage(this);
 
     // 业务结果
     connect(loginLogic, &Login::loginSuccess, this, &AppController::onLoginSuccess);
     connect(loginLogic, &Login::loginFailed, this, &AppController::onLoginFailed);
     connect(regLogic, &Register::registerSuccess, this, &AppController::onRegisterSuccess);
     connect(regLogic, &Register::registerFailed, this, &AppController::onRegisterFailed);
+    connect(friendMgr, &FriendManager::friendListReady, this, &AppController::onFriendListReady);
+    connect(friendMgr, &FriendManager::friendListFailed, this, &AppController::onFriendListFailed);
+    connect(friendMgr, &FriendManager::friendStatusChanged, this, &AppController::onFriendStatusChanged);
+
+    connect(chatNet, &ChatNetWork::messageSent, this, &AppController::onMessageSent);
+    connect(chatNet, &ChatNetWork::messageReceived, this, &AppController::onMessageReceived);
+    connect(chatNet, &ChatNetWork::sendFailed, this, &AppController::onChatSendFailed);
 
     connect(net, &NetWorkManager::errorOccurred, this, &AppController::onNetError);
 }
@@ -89,8 +102,15 @@ void AppController::onLoginSuccess(const QJsonObject& info)
     UserSession::GetInstance().setUser(username, nickname, avatar);
     qDebug() << "current user:" << username << nickname;
 
+    // 聊天记录归这个账号，换账号登录不会串
+    storage->open(username);
+
     scatWin = new ScatWindow;
     scatWin->setUserInfo(nickname, avatar);
+
+    connect(scatWin, &ScatWindow::sendTextMessage, this, &AppController::onSendTextMessage);
+    connect(scatWin, &ScatWindow::requestHistory, this, &AppController::onRequestHistory);
+
     scatWin->show();
 
     // 登录窗用不着了
@@ -104,6 +124,9 @@ void AppController::onLoginSuccess(const QJsonObject& info)
         regWin->deleteLater();
         regWin = nullptr;
     }
+
+    // 主窗口出来了，去拉好友列表
+    friendMgr->requestFriendList();
 }
 
 void AppController::onLoginFailed(const QString& reason)
@@ -128,4 +151,59 @@ void AppController::onRegisterFailed(const QString& reason)
 void AppController::onNetError(const QString& msg)
 {
     qDebug() << "network error:" << msg;
+}
+
+// ---------- 好友 ----------
+
+void AppController::onFriendListReady(const QJsonArray& friends)
+{
+    if (scatWin)
+        scatWin->setFriendList(friends);
+}
+
+void AppController::onFriendListFailed(const QString& reason)
+{
+    qDebug() << "friend list failed:" << reason;
+}
+
+void AppController::onFriendStatusChanged(const QString& username, bool online)
+{
+    if (scatWin)
+        scatWin->updateFriendStatus(username, online);
+}
+
+
+// ---------- 聊天 ----------
+
+void AppController::onSendTextMessage(const QString& to, const QString& content)
+{
+    chatNet->sendTextMessage(to, content);
+}
+
+void AppController::onRequestHistory(const QString& friendId)
+{
+    if (scatWin)
+        scatWin->loadHistory(storage->loadHistory(friendId));
+}
+
+void AppController::onMessageSent(const ChatMessage& msg)
+{
+    // 先存，再显示。自己发的和收到的走同一条路径
+    storage->addMessage(msg);
+
+    if (scatWin)
+        scatWin->addChatMessage(msg);
+}
+
+void AppController::onMessageReceived(const ChatMessage& msg)
+{
+    storage->addMessage(msg);
+
+    if (scatWin)
+        scatWin->addChatMessage(msg);
+}
+
+void AppController::onChatSendFailed(const QString& reason)
+{
+    qDebug() << "chat send failed:" << reason;
 }

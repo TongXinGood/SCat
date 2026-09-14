@@ -141,7 +141,7 @@ void ScatWindow::initConnect()
     connect(btnSettings, &QPushButton::clicked, this, &ScatWindow::onSettingsClicked);
     connect(friendList, &FriendList::sendAddFriendClicked, this, &ScatWindow::sendAddFriendClicked);
     connect(friendList, &FriendList::sendFriendSelected, this, &ScatWindow::onFriendSelected);
-
+    connect(friendList, &FriendList::sendFriendUnselected, this, &ScatWindow::onFriendUnselected);
     // 绑定右侧信号
     connect(chatWindow, &ChatWindow::sendTextMsg, this, &ScatWindow::onChatTextMsgSent);
 
@@ -163,9 +163,14 @@ void ScatWindow::onFriendSelected(const QString& friendId, const QString& friend
         rightStackedWidget->setCurrentIndex(1);
     }
 
-    // 设置聊天窗口顶部的信息
-    QString avatarPath = QString(":/Resource/avatar/%1.png").arg(friendId);
-    chatWindow->setChatInfo(friendName, "Active now", avatarPath);
+    // 从缓存里取这个好友的头像和在线状态，不用再问服务端
+    QJsonObject info = friendInfos.value(friendId);
+    QString status = info["online"].toBool() ? "在线" : "离线";
+
+    chatWindow->setChatInfo(friendName, status, avatarPath(info["avatar"].toString()));
+
+    // 向上层要这个人的聊天记录
+    emit requestHistory(friendId);
 }
 
 void ScatWindow::onSettingsClicked()
@@ -175,10 +180,84 @@ void ScatWindow::onSettingsClicked()
 
 void ScatWindow::onChatTextMsgSent(const QString& msg)
 {
+    // 没选中任何人就不发（虽然这时候聊天界面根本没显示，保险起见）
+    if (currentFriendId.isEmpty())
+        return;
+
     emit sendTextMessage(currentFriendId, msg);
 }
 void ScatWindow::setUserInfo(const QString& nickname, const QString& avatar)
 {
     lbMyName->setText(nickname);
-    lbMyAvatar->setPixmap(QPixmap(":/Resource/icon/" + avatar));
+    lbMyAvatar->setPixmap(QPixmap(avatarPath(avatar)));
+}
+
+QString ScatWindow::avatarPath(const QString& avatar)
+{
+    if (avatar.isEmpty())
+        return ":/Resource/icon/head.png";
+
+    return ":/Resource/icon/" + avatar;
+}
+
+void ScatWindow::setFriendList(const QJsonArray& friends)
+{
+    friendInfos.clear();
+    friendList->clearFriends();
+
+    for (const QJsonValue& value : friends) {
+        QJsonObject obj = value.toObject();
+
+        QString username = obj["username"].toString();
+        QString nickname = obj["nickname"].toString();
+        QString avatar = obj["avatar"].toString();
+
+        friendInfos.insert(username, obj);
+
+        // 列表上显示 nickname（可以改），内部标识用 username（固定不变）
+        friendList->addFriendItem(username, avatarPath(avatar), nickname, "");
+    }
+
+    qDebug() << "friend list loaded:" << friends.size();
+}
+
+void ScatWindow::onFriendUnselected()
+{
+    currentFriendId.clear();
+    rightStackedWidget->setCurrentIndex(0);      // 回到默认背景页
+}
+
+void ScatWindow::updateFriendStatus(const QString& username, bool online)
+{
+    if (!friendInfos.contains(username))
+        return;
+
+    QJsonObject info = friendInfos.value(username);
+    info["online"] = online;
+    friendInfos.insert(username, info);
+
+    // 如果正在跟这个人聊天，顺手把聊天窗顶上的状态也改掉
+    if (currentFriendId == username) {
+        chatWindow->setChatInfo(info["nickname"].toString(),
+            online ? "在线" : "离线",
+            avatarPath(info["avatar"].toString()));
+    }
+}
+
+void ScatWindow::loadHistory(const QList<ChatMessage>& list)
+{
+    chatWindow->setHistory(list);
+}
+
+void ScatWindow::addChatMessage(const ChatMessage& msg)
+{
+    QString peer = msg.peer();
+
+    // 左边列表的"最后一条消息"跟着更新
+    friendList->updateLastMessage(peer, msg.content);
+
+    // 正在看这个人的对话才画出来；在跟别人聊天就只更新列表，
+    // 消息已经存进 ChatStorage 了，切回去的时候会重新读出来
+    if (peer == currentFriendId)
+        chatWindow->appendMessage(msg);
 }
