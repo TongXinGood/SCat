@@ -33,7 +33,7 @@ private slots:
 private:
     void handleChatResp(const QJsonObject& obj);
     void handleChatPush(const QJsonObject& obj);
-
+    void handleOfflinePush(const QJsonObject& obj);
 private:
     NetWorkManager* net;
 };

@@ -5,6 +5,7 @@
 #include "../../Friend/include/FriendList.h"
 #include "../../Chat/include/ChatWindow.h"
 #include "../../Chat/include/ChatMessage.h"
+#include "../../Other/include/NotifyButton.h"
 #include <QStackedWidget>
 #include <QWidget>
 #include <QHBoxLayout>
@@ -27,6 +28,7 @@ public:
     void updateFriendStatus(const QString& username, bool online);
     void loadHistory(const QList<ChatMessage>& list);
     void addChatMessage(const ChatMessage& msg);
+    void setRequestCount(int count);        
 signals:
     // 抛出给上层或控制器的信号
     void sendSettingsClicked();
@@ -39,6 +41,7 @@ signals:
     void sendFileClicked(const QString& friendId);
     void sendMoodClicked(const QString& friendId);
 
+    void sendNotifyClicked();
 private slots:
     void onFriendSelected(const QString& friendId, const QString& friendName);
     void onSettingsClicked();
@@ -46,10 +49,14 @@ private slots:
     // 捕获 ChatWindow 内部发出的消息，带上身份标识转发出去
     void onChatTextMsgSent(const QString& msg);
 
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
 private:
     void initUI();
     void initProfileSection();
     void initConnect();
+    void updateNotifyPos();
     static QString avatarPath(const QString& avatar);
 private:
     // 整个窗口的核心容器，最后会被塞进 NoFrame
@@ -66,6 +73,8 @@ private:
     QPushButton* btnSettings;
 
     FriendList* friendList;
+
+    NotifyButton* btnNotify;
 
     // 右侧区域 (多视图堆叠)
     QStackedWidget* rightStackedWidget;

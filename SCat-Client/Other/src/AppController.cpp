@@ -14,6 +14,9 @@ AppController::AppController(QObject* parent)
     , friendMgr(nullptr)
     , chatNet(nullptr)
     , storage(nullptr)
+    , addFriendWin(nullptr)
+    , requestWin(nullptr)
+    , pendingCount(0)
 {
     // 网络层
     net = new NetWorkManager(this);
@@ -33,7 +36,10 @@ AppController::AppController(QObject* parent)
     connect(friendMgr, &FriendManager::friendListReady, this, &AppController::onFriendListReady);
     connect(friendMgr, &FriendManager::friendListFailed, this, &AppController::onFriendListFailed);
     connect(friendMgr, &FriendManager::friendStatusChanged, this, &AppController::onFriendStatusChanged);
-
+    connect(friendMgr, &FriendManager::pendingListReady, this, &AppController::onPendingListReady);
+    connect(friendMgr, &FriendManager::newRequestArrived, this, &AppController::onNewRequestArrived);
+    connect(friendMgr, &FriendManager::requestHandled, this, &AppController::onRequestHandled);
+    connect(friendMgr, &FriendManager::friendListChanged, this, &AppController::onFriendListChanged);
     connect(chatNet, &ChatNetWork::messageSent, this, &AppController::onMessageSent);
     connect(chatNet, &ChatNetWork::messageReceived, this, &AppController::onMessageReceived);
     connect(chatNet, &ChatNetWork::sendFailed, this, &AppController::onChatSendFailed);
@@ -46,6 +52,8 @@ AppController::~AppController()
     delete loginWin;
     delete regWin;
     delete scatWin;
+    delete addFriendWin;
+    delete requestWin;
 }
 
 void AppController::start()
@@ -111,9 +119,10 @@ void AppController::onLoginSuccess(const QJsonObject& info)
 
     connect(scatWin, &ScatWindow::sendTextMessage, this, &AppController::onSendTextMessage);
     connect(scatWin, &ScatWindow::requestHistory, this, &AppController::onRequestHistory);
+    connect(scatWin, &ScatWindow::sendAddFriendClicked, this, &AppController::showAddFriendWindow);
+    connect(scatWin, &ScatWindow::sendNotifyClicked, this, &AppController::onNotifyClicked);
 
     scatWin->show();
-
     // 登录窗用不着了
     if (loginWin) {
         loginWin->close();
@@ -128,6 +137,8 @@ void AppController::onLoginSuccess(const QJsonObject& info)
 
     // 主窗口出来了，去拉好友列表
     friendMgr->requestFriendList();
+
+    friendMgr->requestPendingList();
 }
 
 void AppController::onLoginFailed(const QString& reason)
@@ -221,4 +232,113 @@ void AppController::onMessageReceived(const ChatMessage& msg)
 void AppController::onChatSendFailed(const QString& reason)
 {
     qDebug() << "chat send failed:" << reason;
+}
+void AppController::showAddFriendWindow()
+{
+    if (!addFriendWin) {
+        addFriendWin = new AddFriendWindow;
+
+        // 窗口 → 逻辑层
+        connect(addFriendWin, &AddFriendWindow::sendSearchUser,
+            friendMgr, &FriendManager::searchUser);
+        connect(addFriendWin, &AddFriendWindow::sendAddFriend,
+            friendMgr, &FriendManager::addFriend);
+
+        // 逻辑层 → 窗口
+        connect(friendMgr, &FriendManager::searchResult,
+            addFriendWin, &AddFriendWindow::showResult);
+        connect(friendMgr, &FriendManager::searchNotFound,
+            addFriendWin, &AddFriendWindow::showNotFound);
+        connect(friendMgr, &FriendManager::addFriendResult,
+            addFriendWin, &AddFriendWindow::onAddSent);
+    }
+
+    // 每次打开都清掉上次的搜索结果，按钮回到可点的"添加"
+    addFriendWin->clearResult();
+    addFriendWin->show();
+    addFriendWin->raise();
+    addFriendWin->activateWindow();
+}
+
+
+// ---------- 好友申请 ----------
+
+void AppController::onNotifyClicked()
+{
+    if (!requestWin) {
+        requestWin = new RequestWindow;
+
+        connect(requestWin, &RequestWindow::sendHandleRequest,
+            this, &AppController::onHandleRequest);
+    }
+
+    requestWin->show();
+    requestWin->raise();
+    requestWin->activateWindow();
+
+    // 每次打开都重新拉一次，保证看到的是最新的
+    friendMgr->requestPendingList();
+}
+
+void AppController::onPendingListReady(const QJsonArray& requests)
+{
+    pendingCount = requests.size();
+
+    if (scatWin)
+        scatWin->setRequestCount(pendingCount);
+
+    // 窗口没打开就只更新红点，打开了才刷新列表内容
+    if (requestWin)
+        requestWin->setRequests(requests);
+}
+
+void AppController::onNewRequestArrived(const QString& username,
+    const QString& nickname, const QString& avatar)
+{
+    ++pendingCount;
+
+    if (scatWin)
+        scatWin->setRequestCount(pendingCount);
+
+    // 窗口正开着就直接把新的一行插进去，不用等用户重新打开
+    if (requestWin && requestWin->isVisible())
+        requestWin->addRequest(username, nickname, avatar);
+}
+
+void AppController::onHandleRequest(const QString& username, int action)
+{
+    // 先把这一行的两个按钮锁住，服务端回来之前别让用户连点
+    if (requestWin)
+        requestWin->setItemBusy(username, true);
+
+    friendMgr->handleRequest(username, action);
+}
+
+void AppController::onRequestHandled(bool ok, const QString& username, int action)
+{
+    Q_UNUSED(action);
+
+    if (!ok) {
+        // 失败了把按钮解锁，让用户能重试
+        if (requestWin)
+            requestWin->setItemBusy(username, false);
+        return;
+    }
+
+    // 处理成功：那一行消失，红点减一
+    if (requestWin)
+        requestWin->removeRequest(username);
+
+    if (pendingCount > 0)
+        --pendingCount;
+
+    if (scatWin)
+        scatWin->setRequestCount(pendingCount);
+}
+
+void AppController::onFriendListChanged()
+{
+    // 服务端说好友关系变了，重新拉一遍列表。
+    // 同意的一方和被同意的一方都会收到这条
+    friendMgr->requestFriendList();
 }

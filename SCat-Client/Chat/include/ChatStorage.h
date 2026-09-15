@@ -34,8 +34,6 @@ public:
     void clearHistory(const QString& peer);   // 清跟某个人的
     void clearAll();                          // 清全部
 
-    // 数据库文件路径，调试时想手动删文件用得上
-    static QString dbPathFor(const QString& user);
 
 private:
     bool createTables();

@@ -1,6 +1,6 @@
 ﻿#include "../include/ChatNetWork.h"
 #include "../../Other/include/UserSession.h"
-
+#include <QJsonArray>
 ChatNetWork::ChatNetWork(NetWorkManager* net, QObject* parent)
     : QObject(parent), net(net)
 {
@@ -36,7 +36,11 @@ void ChatNetWork::onPacketReceived(quint16 type, const QJsonObject& obj)
     case MSG_CHAT_PUSH:
         handleChatPush(obj);
         break;
-
+    
+    case MSG_OFFLINE_PUSH:
+        handleOfflinePush(obj);
+        break;
+    
     default:
         break;      // 不是聊天模块的包，不管
     }
@@ -57,8 +61,6 @@ void ChatNetWork::handleChatResp(const QJsonObject& obj)
     msg.from = UserSession::GetInstance().username();
     msg.to = obj["to"].toString();
     msg.content = obj["content"].toString();
-    // 毫秒时间戳是 13 位数，超出了 int 范围。
-    // 这里必须用 toVariant().toLongLong()，用 toInt() 会溢出变成 0
     msg.time = obj["time"].toVariant().toLongLong();
     msg.isSelf = true;
 
@@ -81,4 +83,38 @@ void ChatNetWork::handleChatPush(const QJsonObject& obj)
     qDebug() << "chat received from" << msg.from;
 
     emit messageReceived(msg);
+}
+
+void ChatNetWork::handleOfflinePush(const QJsonObject& obj)
+{
+    QJsonArray arr = obj["msgs"].toArray();
+    if (arr.isEmpty())
+        return;
+
+    QJsonArray acked;
+
+    for (const QJsonValue& value : arr) {
+        QJsonObject item = value.toObject();
+
+        ChatMessage msg;
+        msg.msgid = item["msgid"].toString();
+        msg.from = item["from"].toString();
+        msg.to = item["to"].toString();
+        msg.content = item["content"].toVariant().toString();
+        msg.time = item["time"].toVariant().toLongLong();
+        msg.isSelf = false;
+
+        // 走跟在线消息完全一样的路径：上层负责存本地 + 上屏。
+        // 这里是同步调用，返回时消息已经进数据库了，所以下面确认是安全的
+        emit messageReceived(msg);
+
+        acked.append(msg.msgid);
+    }
+
+    // 确认收到，服务端才会把这批从 offline_msg 表里删掉
+    QJsonObject ack;
+    ack["msgids"] = acked;
+    net->sendPacket(MSG_OFFLINE_ACK, ack);
+
+    qDebug() << "offline messages received:" << acked.size();
 }

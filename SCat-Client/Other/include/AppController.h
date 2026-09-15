@@ -13,6 +13,8 @@
 #include "../../Chat/include/ChatNetWork.h"
 #include "../../Chat/include/ChatStorage.h"
 #include "../../Chat/include/ChatMessage.h"
+#include "../../Friend/include/AddFriendWindow.h"
+#include "../../Friend/include/RequestWindow.h"
 
 class NetWorkManager;
 class Login;
@@ -23,6 +25,8 @@ class ScatWindow;
 class FriendManager;
 class ChatStorage;
 class ChatNetWork;
+class AddFriendWindow;
+class RequestWindow;
 
 class AppController : public QObject
 {
@@ -38,12 +42,21 @@ private slots:
     // 窗口切换
     void showLoginWindow();
     void showRegisterWindow();
+    void showAddFriendWindow();
+    void onNotifyClicked();
 
     // 业务结果
     void onLoginSuccess(const QJsonObject& info);
     void onLoginFailed(const QString& reason);
     void onRegisterSuccess(const QString& account);
     void onRegisterFailed(const QString& reason);
+
+    // 好友申请
+    void onPendingListReady(const QJsonArray& requests);
+    void onNewRequestArrived(const QString& username, const QString& nickname,const QString& avatar);
+    void onHandleRequest(const QString& username, int action);
+    void onRequestHandled(bool ok, const QString& username, int action);
+    void onFriendListChanged();
 
     // 好友列表
     void onFriendListReady(const QJsonArray& friends);
@@ -71,6 +84,9 @@ private:
     FriendManager* friendMgr;
     ChatNetWork* chatNet;
     ChatStorage* storage;
+    AddFriendWindow* addFriendWin;
+    RequestWindow* requestWin;
+    int pendingCount;      
 };
 
 #endif // !APPCONTROLLER_H

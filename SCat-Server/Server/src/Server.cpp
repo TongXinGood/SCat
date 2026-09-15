@@ -49,6 +49,26 @@ void Server::onPacketReceived(ClientSession* from, quint16 type, const QJsonObje
         handleChat(from, obj);
         break;
 
+    case MSG_OFFLINE_ACK:
+        handleOfflineAck(from, obj);
+        break;
+
+    case MSG_SEARCH_USER_REQ:
+        handleSearchUser(from, obj);
+        break;
+
+    case MSG_FRIEND_ADD_REQ:
+        handleFriendAdd(from, obj);
+        break;
+
+    case MSG_FRIEND_REQ_LIST_REQ:
+        handleFriendReqList(from);
+        break;
+
+    case MSG_FRIEND_HANDLE_REQ:
+        handleFriendHandle(from, obj);
+        break;
+
     default:
         qDebug() << "unknown type:" << type;
         break;
@@ -138,8 +158,11 @@ void Server::handleLogin(ClientSession* from, const QJsonObject& obj)
 
     from->sendPacket(MSG_LOGIN_RESP, resp);
 
-    if (code == ERR_OK)
+    if (code == ERR_OK) {
         notifyFriendsStatus(from->username(), true);
+        //补发他不在线时别人发来的消息
+        sendOfflineMessages(from);
+    }
 }
 
 void Server::handleRegister(ClientSession* from, const QJsonObject& obj)
@@ -290,9 +313,11 @@ void Server::handleChat(ClientSession* from, const QJsonObject& obj)
             << ":" << content.left(20);
     }
     else {
-        // 对方不在线，这条消息暂时丢掉。
-        // 第 5 步会改成存进 offline_msg 表，等他上线再补发
-        qDebug() << "chat target offline, dropped:" << to;
+        // 对方不在线，先存进 offline_msg 表，等他登录时补发
+        if (db->addOfflineMsg(msgid, from->username(), to, content, time))
+            qDebug() << "chat stored offline:" << from->username() << "->" << to;
+        else
+            qDebug() << "store offline failed:" << to;
     }
 
     // 回执给发送方，带上服务端时间戳，让它拿去存本地
@@ -304,4 +329,248 @@ void Server::handleChat(ClientSession* from, const QJsonObject& obj)
     resp["delivered"] = (target != nullptr);
 
     from->sendPacket(MSG_CHAT_RESP, resp);
+}
+
+void Server::sendOfflineMessages(ClientSession* to)
+{
+    if (!to->isLogined())
+        return;
+
+    QList<OfflineMsg> list;
+
+    // 一次最多取 100 条。这批被客户端确认、服务端删掉之后，
+    // handleOfflineAck 会再调一次这个函数取下一批，
+    // 所以离线消息攒得再多也不会撑爆单个数据包（上限 1MB）
+    if (!db->getOfflineMsgs(to->username(), list, 100) || list.isEmpty())
+        return;
+
+    QJsonArray arr;
+    for (const OfflineMsg& m : list) {
+        QJsonObject obj;
+        obj["msgid"] = m.msgid;
+        obj["from"] = m.sender;
+        obj["to"] = m.receiver;
+        obj["content"] = m.content;
+        obj["time"] = m.time;
+        arr.append(obj);
+    }
+
+    QJsonObject push;
+    push["msgs"] = arr;
+    to->sendPacket(MSG_OFFLINE_PUSH, push);
+
+    qDebug() << "offline messages sent to" << to->username() << ":" << arr.size();
+}
+
+void Server::handleOfflineAck(ClientSession* from, const QJsonObject& obj)
+{
+    if (!from->isLogined())
+        return;
+
+    QStringList msgids;
+    for (const QJsonValue& value : obj["msgids"].toArray())
+        msgids << value.toString();
+
+    if (msgids.isEmpty())
+        return;
+
+    // 客户端确认存好了，现在才能删。
+    // 要是这个确认包在路上丢了，这批消息会留在表里，下次登录重复投递 ——
+    // 客户端本地 msgid 有 UNIQUE 约束会自动去重，宁可重复也不能丢
+    db->deleteOfflineMsgs(from->username(), msgids);
+
+    qDebug() << "offline acked by" << from->username() << ":" << msgids.size();
+
+    // 可能还有下一批，接着发。发完了 getOfflineMsgs 返回空，循环自然停下
+    sendOfflineMessages(from);
+}
+
+void Server::handleSearchUser(ClientSession* from, const QJsonObject& obj)
+{
+    QJsonObject resp;
+
+    if (!from->isLogined()) {
+        resp["code"] = ERR_NOT_LOGIN;
+        from->sendPacket(MSG_SEARCH_USER_RESP, resp);
+        return;
+    }
+
+    QString target = obj["username"].toString().trimmed();
+    if (target.isEmpty()) {
+        resp["code"] = ERR_INVALID_PARAM;
+        from->sendPacket(MSG_SEARCH_USER_RESP, resp);
+        return;
+    }
+
+    FriendInfo info;
+    if (!db->findUser(target, info)) {
+        resp["code"] = ERR_USER_NOT_FOUND;
+        from->sendPacket(MSG_SEARCH_USER_RESP, resp);
+        qDebug() << "search:" << from->username() << "->" << target << "not found";
+        return;
+    }
+
+    // 告诉客户端这人跟他什么关系，决定"添加"按钮是可点还是灰的。
+    // 有没有待处理的申请这里不查 —— 允许重复申请，反正 ON DUPLICATE KEY
+    // 会把旧记录重置，不会产生重复行
+    int relation = RELATION_STRANGER;
+    if (info.username == from->username())
+        relation = RELATION_SELF;
+    else if (db->isFriend(from->username(), info.username))
+        relation = RELATION_FRIEND;
+
+    resp["code"] = ERR_OK;
+    resp["username"] = info.username;
+    resp["nickname"] = info.nickname;
+    resp["avatar"] = info.avatar;
+    resp["relation"] = relation;
+
+    from->sendPacket(MSG_SEARCH_USER_RESP, resp);
+
+    qDebug() << "search:" << from->username() << "->" << target
+        << "| relation" << relation;
+}
+
+void Server::handleFriendAdd(ClientSession* from, const QJsonObject& obj)
+{
+    QJsonObject resp;
+
+    if (!from->isLogined()) {
+        resp["code"] = ERR_NOT_LOGIN;
+        from->sendPacket(MSG_FRIEND_ADD_RESP, resp);
+        return;
+    }
+
+    QString me = from->username();
+    QString target = obj["username"].toString().trimmed();
+
+    int code = ERR_OK;
+
+    if (target.isEmpty()) {
+        code = ERR_INVALID_PARAM;
+    }
+    else if (target == me) {
+        code = ERR_CANNOT_ADD_SELF;
+    }
+    else {
+        FriendInfo info;
+        if (!db->findUser(target, info))
+            code = ERR_USER_NOT_FOUND;
+        else if (db->isFriend(me, target))
+            code = ERR_ALREADY_FRIEND;
+        else if (!db->addFriendRequest(me, target))
+            code = ERR_DB_ERROR;
+    }
+
+    resp["code"] = code;
+    resp["username"] = target;
+    from->sendPacket(MSG_FRIEND_ADD_RESP, resp);
+
+    if (code == ERR_OK) {
+        qDebug() << "friend request:" << me << "->" << target;
+
+        // 对方在线就立刻推一条，他的铃铛会当场亮起来。
+        // 不在线也不用管，他登录时会主动拉一次待处理列表
+        ClientSession* targetSession = onlineUsers.value(target, nullptr);
+        if (targetSession) {
+            FriendInfo mine;
+            db->findUser(me, mine);
+
+            QJsonObject push;
+            push["username"] = mine.username;
+            push["nickname"] = mine.nickname;
+            push["avatar"] = mine.avatar;
+            targetSession->sendPacket(MSG_FRIEND_REQ_PUSH, push);
+        }
+    }
+    else {
+        qDebug() << "friend request rejected:" << me << "->" << target
+            << "| code" << code;
+    }
+}
+
+void Server::handleFriendReqList(ClientSession* from)
+{
+    QJsonObject resp;
+
+    if (!from->isLogined()) {
+        resp["code"] = ERR_NOT_LOGIN;
+        from->sendPacket(MSG_FRIEND_REQ_LIST_RESP, resp);
+        return;
+    }
+
+    QList<FriendInfo> list;
+    if (!db->getPendingRequests(from->username(), list)) {
+        resp["code"] = ERR_DB_ERROR;
+        from->sendPacket(MSG_FRIEND_REQ_LIST_RESP, resp);
+        return;
+    }
+
+    QJsonArray arr;
+    for (const FriendInfo& info : list) {
+        QJsonObject obj;
+        obj["username"] = info.username;
+        obj["nickname"] = info.nickname;
+        obj["avatar"] = info.avatar;
+        arr.append(obj);
+    }
+
+    resp["code"] = ERR_OK;
+    resp["requests"] = arr;
+    from->sendPacket(MSG_FRIEND_REQ_LIST_RESP, resp);
+
+    qDebug() << "request list sent to" << from->username() << ":" << arr.size();
+}
+
+void Server::handleFriendHandle(ClientSession* from, const QJsonObject& obj)
+{
+    QJsonObject resp;
+
+    if (!from->isLogined()) {
+        resp["code"] = ERR_NOT_LOGIN;
+        from->sendPacket(MSG_FRIEND_HANDLE_RESP, resp);
+        return;
+    }
+
+    QString me = from->username();
+    QString sender = obj["username"].toString().trimmed();
+    int action = obj["action"].toInt();
+
+    if (sender.isEmpty() || (action != HANDLE_ACCEPT && action != HANDLE_REJECT)) {
+        resp["code"] = ERR_INVALID_PARAM;
+        resp["username"] = sender;
+        from->sendPacket(MSG_FRIEND_HANDLE_RESP, resp);
+        return;
+    }
+
+    int code = db->handleRequest(me, sender, action);
+
+    resp["code"] = code;
+    resp["username"] = sender;
+    resp["action"] = action;
+    from->sendPacket(MSG_FRIEND_HANDLE_RESP, resp);
+
+    if (code != ERR_OK) {
+        qDebug() << "handle request failed:" << me << sender << "| code" << code;
+        return;
+    }
+
+    if (action == HANDLE_ACCEPT) {
+        // 双方的好友列表都变了，各推一条。收到的客户端会重新拉一遍列表 ——
+        // 不传具体内容，省了一整套增量更新的逻辑，也不会出现状态不一致
+        notifyFriendListChanged(me);
+        notifyFriendListChanged(sender);
+        qDebug() << "friend accepted:" << me << "<->" << sender;
+    }
+    else {
+        // 拒绝不通知申请方，他那边永远显示"等待验证"
+        qDebug() << "friend rejected:" << me << "x" << sender;
+    }
+}
+
+void Server::notifyFriendListChanged(const QString& username)
+{
+    ClientSession* session = onlineUsers.value(username, nullptr);
+    if (session)
+        session->sendPacket(MSG_FRIEND_LIST_CHANGED, QJsonObject());
 }

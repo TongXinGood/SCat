@@ -1,4 +1,5 @@
 #include "../include/ChatStorage.h"
+#include "../../Other/include/AppPath.h"
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QStandardPaths>
@@ -17,23 +18,14 @@ ChatStorage::~ChatStorage()
     close();
 }
 
-QString ChatStorage::dbPathFor(const QString& user)
-{
-    // Windows 上是 C:/Users/你/AppData/Roaming/SCat/SCat-Client/
-    // 一个账号一个子目录，本机开两个客户端测试时读写的是不同文件，
-    // 不会抢 SQLite 的文件锁
-    QString base = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    return base + "/" + user + "/chat.db";
-}
+
 
 bool ChatStorage::open(const QString& user)
 {
     close();
 
-    QString path = dbPathFor(user);
-
-    // 目录不存在 SQLite 不会自己建，得先 mkpath
-    QDir().mkpath(QFileInfo(path).absolutePath());
+    // 路径和建目录都交给 AppPath
+    QString path = AppPath::chatDbPath(user);
 
     // 起个连接名，不然会占用 QSqlDatabase 的默认连接
     connName = "chat_" + user;

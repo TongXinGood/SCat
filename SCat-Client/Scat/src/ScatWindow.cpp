@@ -64,6 +64,22 @@ void ScatWindow::initUI()
     leftLayout->addWidget(profileWidget);
     leftLayout->addWidget(friendList);
 
+    btnNotify = new NotifyButton(leftContainer);
+    btnNotify->setObjectName("BtnNotify");
+    btnNotify->setFixedSize(56, 56);
+    btnNotify->setIcon(QIcon(":/Resource/icon/notifications.png"));
+    btnNotify->setIconSize(QSize(26, 26));
+    btnNotify->setStyleSheet(
+        "#BtnNotify { background-color: #EFEBFA; border: none; border-radius: 28px; }"
+        "#BtnNotify:hover { background-color: #E4DCF7; }"
+    );
+    btnNotify->raise();      // 确保盖在列表上面
+
+    // leftContainer 的高度会跟着窗口缩放变，装个事件过滤器盯着它的 resize，
+    // 每次变了就把铃铛重新挪回右下角
+    leftContainer->installEventFilter(this);
+
+
     // ================= 右侧容器 =================
     rightStackedWidget = new QStackedWidget(centralWidget);
 
@@ -139,6 +155,7 @@ void ScatWindow::initConnect()
 {
     // 绑定左侧信号
     connect(btnSettings, &QPushButton::clicked, this, &ScatWindow::onSettingsClicked);
+    connect(btnNotify, &QPushButton::clicked, this, &ScatWindow::sendNotifyClicked);
     connect(friendList, &FriendList::sendAddFriendClicked, this, &ScatWindow::sendAddFriendClicked);
     connect(friendList, &FriendList::sendFriendSelected, this, &ScatWindow::onFriendSelected);
     connect(friendList, &FriendList::sendFriendUnselected, this, &ScatWindow::onFriendUnselected);
@@ -260,4 +277,31 @@ void ScatWindow::addChatMessage(const ChatMessage& msg)
     // 消息已经存进 ChatStorage 了，切回去的时候会重新读出来
     if (peer == currentFriendId)
         chatWindow->appendMessage(msg);
+}
+
+void ScatWindow::updateNotifyPos()
+{
+    if (!btnNotify || !leftContainer)
+        return;
+
+    const int rightMargin = 20;
+    const int bottomMargin = 24;
+
+    btnNotify->move(leftContainer->width() - btnNotify->width() - rightMargin,
+        leftContainer->height() - btnNotify->height() - bottomMargin);
+}
+
+bool ScatWindow::eventFilter(QObject* watched, QEvent* event)
+{
+    // 左侧栏尺寸变了，铃铛跟着挪
+    if (watched == leftContainer && event->type() == QEvent::Resize)
+        updateNotifyPos();
+
+    return NoFrame::eventFilter(watched, event);
+}
+
+void ScatWindow::setRequestCount(int count)
+{
+    if (btnNotify)
+        btnNotify->setCount(count);
 }

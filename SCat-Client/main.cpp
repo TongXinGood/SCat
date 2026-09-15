@@ -11,9 +11,11 @@
 #include "Scat/include/ScatWindow.h"
 #include "NetWork/include/NetWorkManager.h"
 #include "Other/include/AppController.h"
+#include "Friend/include/AddFriendWindow.h"
 
 int main(int argc, char* argv[])
-{
+{   
+    
     QApplication a(argc, argv);
 
     QCoreApplication::setOrganizationName("SCat");
@@ -21,6 +23,8 @@ int main(int argc, char* argv[])
     
     AppController app;
     app.start();
-
+    
     return a.exec();
+   
+
 }
