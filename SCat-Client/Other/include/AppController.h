@@ -18,6 +18,7 @@
 #include "../../Friend/include/RequestWindow.h"
 #include "../../Setting/include/SettingsManager.h"
 #include "../include/AvatarUtils.h" 
+#include "../include/Notification.h"
 
 class NetWorkManager;
 class Login;
@@ -31,6 +32,8 @@ class ChatNetWork;
 class AddFriendWindow;
 class RequestWindow;
 class SettingsManager;
+class Notification;
+
 
 class AppController : public QObject
 {
@@ -85,6 +88,8 @@ private slots:
     void onAvatarUploaded(bool ok, const QString& avatar, const QString& reason);
     void onAvatarDownloaded(const QString& avatar);
 
+    void onNotificationClicked(const QString& peer);
+    void onTrayActivated();
 private:
     void updatePendingUi();
 
@@ -103,6 +108,7 @@ private:
     int pendingCount;     
     QJsonArray pendingRequests;
     SettingsManager* settingsMgr;
+    Notification* notify;
 };
 
 #endif // !APPCONTROLLER_H

@@ -21,6 +21,8 @@ public:
     void clearFriends();
     void clearSelection();
     void updateLastMessage(const QString& id, const QString& msg);
+    void setUnread(const QString& id, int count);
+    void selectFriend(const QString& id);        // 点通知时用，程序化选中某个好友
 signals:
     void sendFriendSelected(const QString& friendId, const QString& friendName);
     void sendFriendUnselected();

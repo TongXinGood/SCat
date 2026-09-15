@@ -37,6 +37,8 @@ public:
     void updateMyNickname(const QString& nickname);
     void updateMyAvatar(const QString& avatar);
     void refreshAvatar(const QString& avatar);
+    void selectFriend(const QString& username);              // 点通知时切到这个会话
+    QString nicknameOf(const QString& username) const;       // 弹通知时拿昵称当标题
 signals:
     // 抛出给上层或控制器的信号
     void sendSettingsClicked();
@@ -105,6 +107,8 @@ private:
     // username -> 该好友的完整信息（昵称、头像、在线状态）。
     // 点好友时直接从这里取，不用再问服务端
     QHash<QString, QJsonObject> friendInfos;
+
+    QHash<QString, int> unreadCounts;
 };
 
 #endif // SCATWINDOW_H

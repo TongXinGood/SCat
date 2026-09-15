@@ -18,6 +18,7 @@ AppController::AppController(QObject* parent)
     , addFriendWin(nullptr)
     , requestWin(nullptr)
     , settingsMgr(nullptr)
+    , notify(nullptr)
     , pendingCount(0)
 {
     // 网络层
@@ -30,6 +31,7 @@ AppController::AppController(QObject* parent)
     chatNet = new ChatNetWork(net, this);
     storage = new ChatStorage(this);
     settingsMgr = new SettingsManager(net, this);
+    notify = new Notification(this);
 
     // 业务结果
     connect(loginLogic, &Login::loginSuccess, this, &AppController::onLoginSuccess);
@@ -49,6 +51,8 @@ AppController::AppController(QObject* parent)
     connect(settingsMgr, &SettingsManager::nicknameSaved, this, &AppController::onNicknameSaved);
     connect(settingsMgr, &SettingsManager::avatarUploaded, this, &AppController::onAvatarUploaded);
     connect(settingsMgr, &SettingsManager::avatarDownloaded, this, &AppController::onAvatarDownloaded);
+    connect(notify, &Notification::notificationClicked, this, &AppController::onNotificationClicked);
+    connect(notify, &Notification::trayActivated, this, &AppController::onTrayActivated);
 
     connect(net, &NetWorkManager::errorOccurred, this, &AppController::onNetError);
 }
@@ -244,6 +248,12 @@ void AppController::onMessageReceived(const ChatMessage& msg)
 
     if (scatWin)
         scatWin->addChatMessage(msg);
+
+    scatWin->addChatMessage(msg);
+
+    // 窗口不在最前面才弹通知 —— 用户正盯着聊天窗还弹一下很烦
+    if (!scatWin->isActiveWindow())
+        notify->showMessage(msg.from, scatWin->nicknameOf(msg.from), msg.content);
 }
 
 void AppController::onChatSendFailed(const QString& reason)
@@ -470,4 +480,28 @@ void AppController::onAvatarDownloaded(const QString& avatar)
 
     // 是好友的，刷新列表项和聊天窗顶部
     scatWin->refreshAvatar(avatar);
+}
+
+void AppController::onNotificationClicked(const QString& peer)
+{
+    if (!scatWin)
+        return;
+
+    // showNormal + raise + activateWindow 是 Windows 上把窗口调到前台的
+    // 标准三件套，少一个都可能不灵
+    scatWin->showNormal();
+    scatWin->raise();
+    scatWin->activateWindow();
+
+    scatWin->selectFriend(peer);     // 顺便切到这个人的会话
+}
+
+void AppController::onTrayActivated()
+{
+    if (!scatWin)
+        return;
+
+    scatWin->showNormal();
+    scatWin->raise();
+    scatWin->activateWindow();
 }

@@ -34,7 +34,7 @@ private:
     void refreshEmptyHint();
     int  indexOf(const QString& username) const;
 
-    static QString avatarPath(const QString& avatar);
+    
 
 private:
     QWidget* content;

@@ -1,5 +1,6 @@
 #include "../include/RequestWindow.h"
 #include "../include/RequestItem.h"
+#include "../../Other/include/AvatarUtils.h"  
 #include <QJsonObject>
 #include <QDebug>
 
@@ -29,12 +30,7 @@ RequestWindow::~RequestWindow()
 {
 }
 
-QString RequestWindow::avatarPath(const QString& avatar)
-{
-    if (avatar.isEmpty())
-        return ":/Resource/icon/head.png";
-    return ":/Resource/icon/" + avatar;
-}
+
 
 void RequestWindow::initUI()
 {
@@ -114,7 +110,7 @@ void RequestWindow::appendItem(const QString& username, const QString& nickname,
         return;
 
     QListWidgetItem* item = new QListWidgetItem(listWidget);
-    RequestItem* widget = new RequestItem(username, nickname, avatarPath(avatar), this);
+    RequestItem* widget = new RequestItem(username, nickname,AvatarUtils::load(avatar, 44), this);
 
     item->setSizeHint(QSize(listWidget->width(), 68));
     item->setFlags(item->flags() & ~Qt::ItemIsSelectable);

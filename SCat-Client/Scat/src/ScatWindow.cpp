@@ -185,6 +185,9 @@ void ScatWindow::onFriendSelected(const QString& friendId, const QString& friend
 {
     currentFriendId = friendId;
 
+    unreadCounts.remove(friendId);
+    friendList->setUnread(friendId, 0);
+
     if (rightStackedWidget->currentIndex() != 1)
         rightStackedWidget->setCurrentIndex(1);
 
@@ -234,10 +237,15 @@ void ScatWindow::setFriendList(const QJsonArray& friends)
         QString username = obj["username"].toString();
         friendInfos.insert(username, obj);
 
+        // 列表上显示 nickname（可以改），内部标识用 username（固定不变）
         friendList->addFriendItem(username,
             AvatarUtils::load(obj["avatar"].toString(), 45),
             obj["nickname"].toString(),
             obj["lastMsg"].toString());
+
+        // 列表是整体重建的，未读数要重新贴回去，
+        // 否则好友改个昵称触发重建，红点就凭空消失了
+        friendList->setUnread(username, unreadCounts.value(username));
     }
 
     qDebug() << "friend list loaded:" << friends.size();
@@ -279,8 +287,17 @@ void ScatWindow::addChatMessage(const ChatMessage& msg)
 
     // 正在看这个人的对话才画出来；在跟别人聊天就只更新列表，
     // 消息已经存进 ChatStorage 了，切回去的时候会重新读出来
-    if (peer == currentFriendId)
+    if (peer == currentFriendId) {
         chatWindow->appendMessage(msg);
+        return;
+    }
+
+    // 不是当前正在看的会话，而且是别人发来的（自己发的不算未读）
+    if (!msg.isSelf) {
+        int count = unreadCounts.value(peer) + 1;
+        unreadCounts.insert(peer, count);
+        friendList->setUnread(peer, count);
+    }
 }
 
 void ScatWindow::updateNotifyPos()
@@ -366,4 +383,17 @@ void ScatWindow::onAvatarUploaded(bool ok, const QString& reason)
 {
     if (settingsPage)
         settingsPage->onAvatarUploaded(ok, reason);
+}
+
+void ScatWindow::selectFriend(const QString& username)
+{
+    friendList->selectFriend(username);
+}
+
+QString ScatWindow::nicknameOf(const QString& username) const
+{
+    QJsonObject info = friendInfos.value(username);
+    QString nickname = info["nickname"].toString();
+
+    return nickname.isEmpty() ? username : nickname;
 }
