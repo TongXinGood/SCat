@@ -215,7 +215,7 @@ void ScatWindow::setFriendList(const QJsonArray& friends)
         friendInfos.insert(username, obj);
 
         // 列表上显示 nickname（可以改），内部标识用 username（固定不变）
-        friendList->addFriendItem(username, avatarPath(avatar), nickname, "");
+        friendList->addFriendItem(username, avatarPath(avatar),nickname, obj["lastMsg"].toString());
     }
 
     qDebug() << "friend list loaded:" << friends.size();

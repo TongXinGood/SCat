@@ -7,6 +7,7 @@
 // 一条聊天消息。网络层、存储层、界面层都用这个结构传递
 struct ChatMessage
 {
+    QString msgid;          // 服务端生成的全局唯一 ID
     QString from;           // 发送方 username
     QString to;             // 接收方 username
     QString content;        // 文本内容

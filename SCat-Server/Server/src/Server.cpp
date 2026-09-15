@@ -270,10 +270,15 @@ void Server::handleChat(ClientSession* from, const QJsonObject& obj)
     // 各自取本地时间会导致同一段对话在两边的顺序不一样
     qint64 time = QDateTime::currentMSecsSinceEpoch();
 
+    // 全局唯一的消息 ID，也由服务端生成，保证收发双方存的是同一个值。
+    // 本地去重、以后的撤回和已读回执都靠它
+    QString msgid = QUuid::createUuid().toString(QUuid::WithoutBraces);
+
     // 查在线表，找到对方的连接就推过去
     ClientSession* target = onlineUsers.value(to, nullptr);
     if (target) {
         QJsonObject push;
+        push["msgid"] = msgid;
         push["from"] = from->username();
         push["to"] = to;
         push["content"] = content;
@@ -292,6 +297,7 @@ void Server::handleChat(ClientSession* from, const QJsonObject& obj)
 
     // 回执给发送方，带上服务端时间戳，让它拿去存本地
     resp["code"] = ERR_OK;
+    resp["msgid"] = msgid;
     resp["to"] = to;
     resp["content"] = content;
     resp["time"] = time;

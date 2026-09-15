@@ -5,6 +5,8 @@
 #include <QList>
 #include <QJsonObject>
 #include <QHash>
+#include <QUuid>
+
 
 class ClientSession;
 class Database;

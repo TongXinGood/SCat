@@ -103,8 +103,9 @@ void AppController::onLoginSuccess(const QJsonObject& info)
     qDebug() << "current user:" << username << nickname;
 
     // 聊天记录归这个账号，换账号登录不会串
-    storage->open(username);
-
+    if (!storage->open(username)) {
+        qDebug() << "chat storage open failed, history will not be saved";
+    }
     scatWin = new ScatWindow;
     scatWin->setUserInfo(nickname, avatar);
 
@@ -157,8 +158,22 @@ void AppController::onNetError(const QString& msg)
 
 void AppController::onFriendListReady(const QJsonArray& friends)
 {
-    if (scatWin)
-        scatWin->setFriendList(friends);
+    if (!scatWin)
+        return;
+
+    // 从本地聊天记录里给每个好友补上最后一条消息，填到列表副标题
+    QJsonArray withLast;
+    for (const QJsonValue& value : friends) {
+        QJsonObject obj = value.toObject();
+
+        ChatMessage last;
+        if (storage->lastMessage(obj["username"].toString(), last))
+            obj["lastMsg"] = last.content;
+
+        withLast.append(obj);
+    }
+
+    scatWin->setFriendList(withLast);
 }
 
 void AppController::onFriendListFailed(const QString& reason)

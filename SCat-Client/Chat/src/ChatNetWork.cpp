@@ -53,6 +53,7 @@ void ChatNetWork::handleChatResp(const QJsonObject& obj)
     }
 
     ChatMessage msg;
+    msg.msgid = obj["msgid"].toString();
     msg.from = UserSession::GetInstance().username();
     msg.to = obj["to"].toString();
     msg.content = obj["content"].toString();
@@ -70,6 +71,7 @@ void ChatNetWork::handleChatResp(const QJsonObject& obj)
 void ChatNetWork::handleChatPush(const QJsonObject& obj)
 {
     ChatMessage msg;
+    msg.msgid = obj["msgid"].toString();
     msg.from = obj["from"].toString();
     msg.to = obj["to"].toString();
     msg.content = obj["content"].toString();
