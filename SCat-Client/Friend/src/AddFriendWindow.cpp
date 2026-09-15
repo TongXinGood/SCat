@@ -1,5 +1,5 @@
 ﻿#include "../include/AddFriendWindow.h"
-#include <QPixmap>
+#include "../../Other/include/AvatarUtils.h"
 #include <QDebug>
 
 AddFriendWindow::AddFriendWindow(QWidget* parent) : NoFrame(parent)
@@ -50,10 +50,10 @@ void AddFriendWindow::initUI()
     searchLayout->setSpacing(10);
 
     lbSearchIcon = new QLabel(searchContainer);
+    lbSearchIcon->setObjectName("SearchIcon");
     lbSearchIcon->setFixedSize(18, 18);
     lbSearchIcon->setScaledContents(true);
     lbSearchIcon->setPixmap(QPixmap(":/Resource/icon/search.png"));
-    lbSearchIcon->setStyleSheet("background: transparent; border: none;");
 
     editSearch = new QLineEdit(searchContainer);
     editSearch->setObjectName("SearchEdit");
@@ -80,9 +80,11 @@ void AddFriendWindow::initUI()
     resultLayout->setSpacing(12);
 
     lbAvatar = new QLabel(resultWidget);
+    lbAvatar->setObjectName("ResultAvatar");
     lbAvatar->setFixedSize(48, 48);
-    lbAvatar->setScaledContents(true);
-    lbAvatar->setStyleSheet("border-radius: 24px; background-color: #EFEBFA;");
+    // 头像由 AvatarUtils 裁好成 48x48 的圆形再塞进来，所以：
+    //   1. 不能开 setScaledContents，会把图拉变形
+    //   2. 背景必须透明，圆形图四角是透明的，底下有色块会露出方角
 
     QVBoxLayout* nameLayout = new QVBoxLayout();
     nameLayout->setContentsMargins(0, 0, 0, 0);
@@ -124,6 +126,7 @@ void AddFriendWindow::initUI()
             background-color: #F4F1FA;
             border-radius: 23px;
         }
+        #SearchIcon { background: transparent; border: none; }
         #SearchEdit {
             border: none;
             background: transparent;
@@ -141,6 +144,10 @@ void AddFriendWindow::initUI()
             background-color: #FFFFFF;
             border-radius: 10px;
             border: 1px solid #EEEEEE;
+        }
+        #ResultAvatar {
+            background: transparent;
+            border: none;
         }
         #Nickname {
             font-size: 15px;
@@ -214,6 +221,7 @@ void AddFriendWindow::setHint(const QString& text)
 void AddFriendWindow::clearResult()
 {
     resultUser.clear();
+    editSearch->clear();
     setHint("输入对方的账号，按回车查找");
 }
 
@@ -233,10 +241,7 @@ void AddFriendWindow::showResult(const QString& username, const QString& nicknam
 {
     resultUser = username;
 
-    QString path = avatar.isEmpty() ? ":/Resource/icon/head.png"
-        : ":/Resource/icon/" + avatar;
-    lbAvatar->setPixmap(QPixmap(path));
-
+    lbAvatar->setPixmap(AvatarUtils::load(avatar, 48));
     lbNickname->setText(nickname);
     lbUsername->setText(username);
 

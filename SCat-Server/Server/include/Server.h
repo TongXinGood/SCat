@@ -35,11 +35,15 @@ private:
     void handleFriendHandle(ClientSession* from, const QJsonObject& obj);
     void handleChat(ClientSession* from, const QJsonObject& obj);
     void handleOfflineAck(ClientSession* from, const QJsonObject& obj);
+    void handleSetNickname(ClientSession* from, const QJsonObject& obj);
+    void handleSetAvatar(ClientSession* from, const QJsonObject& obj);
+    void handleGetAvatar(ClientSession* from, const QJsonObject& obj);
     // 给刚上线的用户补发离线消息，一次最多一批
     void sendOfflineMessages(ClientSession* to);
 
     void notifyFriendsStatus(const QString& username, bool online);
     void notifyFriendListChanged(const QString& username);
+    void notifyFriendsProfileChanged(const QString& username);
 
     QTcpServer* server;
     QList<ClientSession*> sessions;

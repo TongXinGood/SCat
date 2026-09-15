@@ -1,4 +1,5 @@
 ﻿#include "../include/ScatWindow.h"
+#include "../../Other/include/AvatarUtils.h"
 #include <QPixmap>
 
 ScatWindow::ScatWindow(QWidget* parent) : NoFrame(parent)
@@ -102,6 +103,12 @@ void ScatWindow::initUI()
     rightStackedWidget->addWidget(defaultPage); // Index 0
     rightStackedWidget->addWidget(chatWindow);  // Index 1
 
+    settingsPage = new SettingsPage();
+
+    rightStackedWidget->addWidget(defaultPage);   // Index 0
+    rightStackedWidget->addWidget(chatWindow);    // Index 1
+    rightStackedWidget->addWidget(settingsPage);  // Index 2
+
     // 默认显示背景图
     rightStackedWidget->setCurrentIndex(0);
 
@@ -161,6 +168,9 @@ void ScatWindow::initConnect()
     connect(friendList, &FriendList::sendFriendUnselected, this, &ScatWindow::onFriendUnselected);
     // 绑定右侧信号
     connect(chatWindow, &ChatWindow::sendTextMsg, this, &ScatWindow::onChatTextMsgSent);
+    connect(settingsPage, &SettingsPage::sendChangeAvatar, this, &ScatWindow::sendChangeAvatar);
+    connect(settingsPage, &SettingsPage::sendSaveNickname, this, &ScatWindow::sendSaveNickname);
+    connect(settingsPage, &SettingsPage::sendChangeStorage, this, &ScatWindow::sendChangeStorage);
 
     // 通过 Lambda 捕获 currentFriendId 转发给外部
     connect(chatWindow, &ChatWindow::sendFileClicked, this, [this]() {
@@ -175,23 +185,26 @@ void ScatWindow::onFriendSelected(const QString& friendId, const QString& friend
 {
     currentFriendId = friendId;
 
-    // 切换到聊天界面
-    if (rightStackedWidget->currentIndex() != 1) {
+    if (rightStackedWidget->currentIndex() != 1)
         rightStackedWidget->setCurrentIndex(1);
-    }
 
-    // 从缓存里取这个好友的头像和在线状态，不用再问服务端
     QJsonObject info = friendInfos.value(friendId);
     QString status = info["online"].toBool() ? "在线" : "离线";
 
-    chatWindow->setChatInfo(friendName, status, avatarPath(info["avatar"].toString()));
+    chatWindow->setChatInfo(friendName, status,
+        AvatarUtils::load(info["avatar"].toString(), 45));
 
-    // 向上层要这个人的聊天记录
     emit requestHistory(friendId);
 }
 
 void ScatWindow::onSettingsClicked()
 {
+    // 切到设置页，顺手取消好友列表的选中 ——
+    // 不然右边显示设置、左边还高亮着某个好友，看着别扭
+    currentFriendId.clear();
+    friendList->clearSelection();
+    rightStackedWidget->setCurrentIndex(2);
+
     emit sendSettingsClicked();
 }
 
@@ -206,16 +219,9 @@ void ScatWindow::onChatTextMsgSent(const QString& msg)
 void ScatWindow::setUserInfo(const QString& nickname, const QString& avatar)
 {
     lbMyName->setText(nickname);
-    lbMyAvatar->setPixmap(QPixmap(avatarPath(avatar)));
+    lbMyAvatar->setPixmap(AvatarUtils::load(avatar, 50));
 }
 
-QString ScatWindow::avatarPath(const QString& avatar)
-{
-    if (avatar.isEmpty())
-        return ":/Resource/icon/head.png";
-
-    return ":/Resource/icon/" + avatar;
-}
 
 void ScatWindow::setFriendList(const QJsonArray& friends)
 {
@@ -226,13 +232,12 @@ void ScatWindow::setFriendList(const QJsonArray& friends)
         QJsonObject obj = value.toObject();
 
         QString username = obj["username"].toString();
-        QString nickname = obj["nickname"].toString();
-        QString avatar = obj["avatar"].toString();
-
         friendInfos.insert(username, obj);
 
-        // 列表上显示 nickname（可以改），内部标识用 username（固定不变）
-        friendList->addFriendItem(username, avatarPath(avatar),nickname, obj["lastMsg"].toString());
+        friendList->addFriendItem(username,
+            AvatarUtils::load(obj["avatar"].toString(), 45),
+            obj["nickname"].toString(),
+            obj["lastMsg"].toString());
     }
 
     qDebug() << "friend list loaded:" << friends.size();
@@ -253,11 +258,10 @@ void ScatWindow::updateFriendStatus(const QString& username, bool online)
     info["online"] = online;
     friendInfos.insert(username, info);
 
-    // 如果正在跟这个人聊天，顺手把聊天窗顶上的状态也改掉
     if (currentFriendId == username) {
         chatWindow->setChatInfo(info["nickname"].toString(),
             online ? "在线" : "离线",
-            avatarPath(info["avatar"].toString()));
+            AvatarUtils::load(info["avatar"].toString(), 45));
     }
 }
 
@@ -304,4 +308,62 @@ void ScatWindow::setRequestCount(int count)
 {
     if (btnNotify)
         btnNotify->setCount(count);
+}
+
+void ScatWindow::setSettingsInfo(const QString& username, const QString& nickname,
+    const QString& avatar)
+{
+    if (settingsPage)
+        settingsPage->setUserInfo(username, nickname, avatar);
+}
+
+void ScatWindow::setStoragePath(const QString& path)
+{
+    if (settingsPage)
+        settingsPage->setStoragePath(path);
+}
+
+void ScatWindow::onNicknameSaved(bool ok, const QString& reason)
+{
+    if (settingsPage)
+        settingsPage->onNicknameSaved(ok, reason);
+}
+
+void ScatWindow::updateMyNickname(const QString& nickname)
+{
+    // 左上角个人信息栏
+    lbMyName->setText(nickname);
+
+    // 设置页里的输入框（服务端可能做了 trim，以它返回的为准）
+    if (settingsPage)
+        settingsPage->setNickname(nickname);
+}
+
+void ScatWindow::updateMyAvatar(const QString& avatar)
+{
+    lbMyAvatar->setPixmap(AvatarUtils::load(avatar, 50));
+
+    if (settingsPage)
+        settingsPage->setAvatar(avatar);
+}
+
+void ScatWindow::refreshAvatar(const QString& avatar)
+{
+    // 刚下载完某个头像文件，把用这张图的地方都刷一遍。
+    // 理论上只会有一个人用它（文件名带账号和时间戳），循环是为了保险
+    for (auto it = friendInfos.constBegin(); it != friendInfos.constEnd(); ++it) {
+        if (it.value()["avatar"].toString() != avatar)
+            continue;
+
+        friendList->updateAvatar(it.key(), AvatarUtils::load(avatar, 45));
+
+        if (it.key() == currentFriendId)
+            chatWindow->setAvatar(AvatarUtils::load(avatar, 45));
+    }
+}
+
+void ScatWindow::onAvatarUploaded(bool ok, const QString& reason)
+{
+    if (settingsPage)
+        settingsPage->onAvatarUploaded(ok, reason);
 }

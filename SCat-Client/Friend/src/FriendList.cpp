@@ -113,10 +113,11 @@ void FriendList::initConnect()
     connect(btnAdd, &QPushButton::clicked, this, &FriendList::onAddClicked);
 }
 
-void FriendList::addFriendItem(const QString& id, const QString& avatarPath, const QString& name, const QString& lastMsg)
+void FriendList::addFriendItem(const QString& id, const QPixmap& avatar,
+    const QString& name, const QString& lastMsg)
 {
     QListWidgetItem* item = new QListWidgetItem(listWidget);
-    FriendListItem* customWidget = new FriendListItem(id, avatarPath, name, lastMsg, this);
+    FriendListItem* customWidget = new FriendListItem(id, avatar, name, lastMsg, this);
 
     item->setSizeHint(QSize(listWidget->width(), 65));
     listWidget->setItemWidget(item, customWidget);
@@ -173,6 +174,26 @@ void FriendList::updateLastMessage(const QString& id, const QString& msg)
 
         if (item && item->getFriendId() == id) {
             item->setLastMessage(msg);
+            return;
+        }
+    }
+}
+
+void FriendList::clearSelection()
+{
+    listWidget->clearSelection();
+    listWidget->setCurrentItem(nullptr);
+    currentId.clear();
+}
+
+void FriendList::updateAvatar(const QString& id, const QPixmap& avatar)
+{
+    for (int i = 0; i < listWidget->count(); ++i) {
+        FriendListItem* item = qobject_cast<FriendListItem*>(
+            listWidget->itemWidget(listWidget->item(i)));
+
+        if (item && item->getFriendId() == id) {
+            item->setAvatar(avatar);
             return;
         }
     }

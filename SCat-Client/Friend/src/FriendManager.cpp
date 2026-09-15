@@ -46,6 +46,10 @@ void FriendManager::onPacketReceived(quint16 type, const QJsonObject& obj)
         handleHandleResp(obj);
         break;
 
+    case MSG_FRIEND_REQ_LIST_RESP:
+        handlePendingListResp(obj);
+        break;
+
     case MSG_FRIEND_LIST_CHANGED:
         // 服务端说好友列表变了，重新拉一遍就完事，不用解析任何内容
         qDebug() << "friend list changed, reloading";

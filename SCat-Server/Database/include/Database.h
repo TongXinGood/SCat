@@ -40,6 +40,8 @@ public:
     int  addUser(const QString& username, const QString& password,const QString& nickname);
     int  checkLogin(const QString& username, const QString& password);
     bool getUserInfo(const QString& username,QString& nickname, QString& avatar);
+    bool setNickname(const QString& username, const QString& nickname);
+    bool setAvatar(const QString& username, const QString& avatar);
     // 按账号精确查一个人的公开信息（FriendInfo 里正好就是这三个字段）
     bool findUser(const QString& username, FriendInfo& out);
     bool getFriendList(const QString& username, QList<FriendInfo>& list);

@@ -57,9 +57,8 @@ void ChatWindow::initHeader()
 
     lbAvatar = new QLabel(headerWidget);
     lbAvatar->setFixedSize(45, 45);
-    lbAvatar->setScaledContents(true);
-    lbAvatar->setPixmap(QPixmap(":/Resource/icon/head.png"));
-    lbAvatar->setStyleSheet("border-radius: 22px; border: 1px solid #F0F0F0;");
+    lbAvatar->setPixmap(QPixmap());
+    lbAvatar->setStyleSheet("background: transparent; border: none;");
 
     QVBoxLayout* infoLayout = new QVBoxLayout();
     infoLayout->setSpacing(2);
@@ -332,11 +331,12 @@ void ChatWindow::onMoodBtnClicked()
     emit sendMoodClicked();
 }
 
-void ChatWindow::setChatInfo(const QString& name, const QString& status, const QString& avatarPath)
+void ChatWindow::setChatInfo(const QString& name, const QString& status,
+    const QPixmap& avatar)
 {
     lbName->setText(name);
     lbStatus->setText(status);
-    lbAvatar->setPixmap(QPixmap(avatarPath).scaled(45, 45, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    setAvatar(avatar);
 }
 
 void ChatWindow::setHistory(const QList<ChatMessage>& list)
@@ -352,4 +352,9 @@ void ChatWindow::setHistory(const QList<ChatMessage>& list)
 void ChatWindow::appendMessage(const ChatMessage& msg)
 {
     addMessage(msg.content, msg.isSelf);
+}
+
+void ChatWindow::setAvatar(const QPixmap& avatar)
+{
+    lbAvatar->setPixmap(avatar);
 }

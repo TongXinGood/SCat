@@ -1,5 +1,6 @@
 #include "../include/AppController.h"
 #include "../include/UserSession.h"
+#include "../include/AppPath.h"
 #include <QMessageBox>
 #include <QDebug>
 
@@ -16,6 +17,7 @@ AppController::AppController(QObject* parent)
     , storage(nullptr)
     , addFriendWin(nullptr)
     , requestWin(nullptr)
+    , settingsMgr(nullptr)
     , pendingCount(0)
 {
     // 网络层
@@ -27,6 +29,7 @@ AppController::AppController(QObject* parent)
     friendMgr = new FriendManager(net, this);
     chatNet = new ChatNetWork(net, this);
     storage = new ChatStorage(this);
+    settingsMgr = new SettingsManager(net, this);
 
     // 业务结果
     connect(loginLogic, &Login::loginSuccess, this, &AppController::onLoginSuccess);
@@ -43,6 +46,9 @@ AppController::AppController(QObject* parent)
     connect(chatNet, &ChatNetWork::messageSent, this, &AppController::onMessageSent);
     connect(chatNet, &ChatNetWork::messageReceived, this, &AppController::onMessageReceived);
     connect(chatNet, &ChatNetWork::sendFailed, this, &AppController::onChatSendFailed);
+    connect(settingsMgr, &SettingsManager::nicknameSaved, this, &AppController::onNicknameSaved);
+    connect(settingsMgr, &SettingsManager::avatarUploaded, this, &AppController::onAvatarUploaded);
+    connect(settingsMgr, &SettingsManager::avatarDownloaded, this, &AppController::onAvatarDownloaded);
 
     connect(net, &NetWorkManager::errorOccurred, this, &AppController::onNetError);
 }
@@ -116,12 +122,16 @@ void AppController::onLoginSuccess(const QJsonObject& info)
     }
     scatWin = new ScatWindow;
     scatWin->setUserInfo(nickname, avatar);
+    scatWin->setSettingsInfo(username, nickname, avatar);
+    scatWin->setStoragePath(AppPath::dataRoot());
 
     connect(scatWin, &ScatWindow::sendTextMessage, this, &AppController::onSendTextMessage);
     connect(scatWin, &ScatWindow::requestHistory, this, &AppController::onRequestHistory);
     connect(scatWin, &ScatWindow::sendAddFriendClicked, this, &AppController::showAddFriendWindow);
     connect(scatWin, &ScatWindow::sendNotifyClicked, this, &AppController::onNotifyClicked);
-
+    connect(scatWin, &ScatWindow::sendSaveNickname, this, &AppController::onSaveNickname);
+    connect(scatWin, &ScatWindow::sendChangeStorage, this, &AppController::onChangeStorage);
+    connect(scatWin, &ScatWindow::sendChangeAvatar, this, &AppController::onChangeAvatar);
     scatWin->show();
     // 登录窗用不着了
     if (loginWin) {
@@ -139,6 +149,9 @@ void AppController::onLoginSuccess(const QJsonObject& info)
     friendMgr->requestFriendList();
 
     friendMgr->requestPendingList();
+
+    if (!AvatarUtils::isCached(avatar))
+        settingsMgr->downloadAvatar(avatar);
 }
 
 void AppController::onLoginFailed(const QString& reason)
@@ -180,6 +193,10 @@ void AppController::onFriendListReady(const QJsonArray& friends)
         ChatMessage last;
         if (storage->lastMessage(obj["username"].toString(), last))
             obj["lastMsg"] = last.content;
+
+        QString avatar = obj["avatar"].toString();
+        if (!AvatarUtils::isCached(avatar))
+            settingsMgr->downloadAvatar(avatar);
 
         withLast.append(obj);
     }
@@ -263,6 +280,18 @@ void AppController::showAddFriendWindow()
 
 // ---------- 好友申请 ----------
 
+void AppController::updatePendingUi()
+{
+    pendingCount = pendingRequests.size();
+
+    if (scatWin)
+        scatWin->setRequestCount(pendingCount);
+
+    if (requestWin)
+        requestWin->setRequests(pendingRequests);
+}
+
+
 void AppController::onNotifyClicked()
 {
     if (!requestWin) {
@@ -272,37 +301,45 @@ void AppController::onNotifyClicked()
             this, &AppController::onHandleRequest);
     }
 
+    // 先用本地缓存把列表填上 —— 窗口一打开就有内容，
+    // 不用干等服务端那一个来回
+    requestWin->setRequests(pendingRequests);
+
     requestWin->show();
     requestWin->raise();
     requestWin->activateWindow();
 
-    // 每次打开都重新拉一次，保证看到的是最新的
+    // 再向服务端要一次，以它为准刷新
     friendMgr->requestPendingList();
 }
 
+
 void AppController::onPendingListReady(const QJsonArray& requests)
 {
-    pendingCount = requests.size();
+    qDebug() << "pending list from server:" << requests.size();
 
-    if (scatWin)
-        scatWin->setRequestCount(pendingCount);
-
-    // 窗口没打开就只更新红点，打开了才刷新列表内容
-    if (requestWin)
-        requestWin->setRequests(requests);
+    // 服务端的列表是权威，直接覆盖本地缓存
+    pendingRequests = requests;
+    updatePendingUi();
 }
 
 void AppController::onNewRequestArrived(const QString& username,
     const QString& nickname, const QString& avatar)
 {
-    ++pendingCount;
+    // 同一个人重复申请时，服务端 friend_request 表因为 uk_pair 唯一约束
+    // 只有一行，本地也必须只留一条，否则红点会越加越多跟实际对不上
+    for (const QJsonValue& value : pendingRequests) {
+        if (value.toObject()["username"].toString() == username)
+            return;
+    }
 
-    if (scatWin)
-        scatWin->setRequestCount(pendingCount);
+    QJsonObject obj;
+    obj["username"] = username;
+    obj["nickname"] = nickname;
+    obj["avatar"] = avatar;
+    pendingRequests.append(obj);
 
-    // 窗口正开着就直接把新的一行插进去，不用等用户重新打开
-    if (requestWin && requestWin->isVisible())
-        requestWin->addRequest(username, nickname, avatar);
+    updatePendingUi();
 }
 
 void AppController::onHandleRequest(const QString& username, int action)
@@ -325,15 +362,15 @@ void AppController::onRequestHandled(bool ok, const QString& username, int actio
         return;
     }
 
-    // 处理成功：那一行消失，红点减一
-    if (requestWin)
-        requestWin->removeRequest(username);
+    // 从缓存里摘掉，红点和列表跟着一起更新
+    for (int i = 0; i < pendingRequests.size(); ++i) {
+        if (pendingRequests.at(i).toObject()["username"].toString() == username) {
+            pendingRequests.removeAt(i);
+            break;
+        }
+    }
 
-    if (pendingCount > 0)
-        --pendingCount;
-
-    if (scatWin)
-        scatWin->setRequestCount(pendingCount);
+    updatePendingUi();
 }
 
 void AppController::onFriendListChanged()
@@ -341,4 +378,96 @@ void AppController::onFriendListChanged()
     // 服务端说好友关系变了，重新拉一遍列表。
     // 同意的一方和被同意的一方都会收到这条
     friendMgr->requestFriendList();
+}
+
+// ---------- 设置 ----------
+
+void AppController::onSaveNickname(const QString& nickname)
+{
+    settingsMgr->saveNickname(nickname);
+}
+
+void AppController::onNicknameSaved(bool ok, const QString& nickname, const QString& reason)
+{
+    if (scatWin)
+        scatWin->onNicknameSaved(ok, reason);      // 解锁"保存"按钮
+
+    if (!ok) {
+        QMessageBox::warning(scatWin, "保存失败", reason);
+        return;
+    }
+
+    // 本地也跟着更新：左上角名字 + UserSession
+    UserSession& session = UserSession::GetInstance();
+    session.setUser(session.username(), nickname, session.avatar());
+
+    if (scatWin)
+        scatWin->updateMyNickname(nickname);
+}
+
+void AppController::onChangeStorage(const QString& dir)
+{
+    QString me = UserSession::GetInstance().username();
+
+    // 搬之前必须先把数据库关掉。SQLite 开着 WAL 的时候，
+    // chat.db 里的数据有一部分还在 -wal 文件里没落盘，
+    // 直接拷可能拷到一个残缺的库
+    storage->close();
+
+    QString error;
+    bool ok = AppPath::moveDataTo(dir, error);
+
+    // 不管搬成功没有，都得把数据库重新打开，
+    // 否则后面收发消息全存不进去。dataRoot() 这时已经指向新位置了
+    if (!me.isEmpty())
+        storage->open(me);
+
+    if (scatWin)
+        scatWin->setStoragePath(AppPath::dataRoot());
+
+    if (ok) {
+        QMessageBox::information(scatWin, "更改完成",
+            "数据已移动到：\n" + AppPath::dataRoot() +
+            "\n\n旧目录里的文件没有删除，确认没问题后可以手动清理。");
+    }
+    else {
+        QMessageBox::warning(scatWin, "更改失败", error);
+    }
+}
+
+void AppController::onChangeAvatar(const QString& filePath)
+{
+    settingsMgr->uploadAvatar(filePath);
+}
+
+void AppController::onAvatarUploaded(bool ok, const QString& avatar, const QString& reason)
+{
+    if (scatWin)
+        scatWin->onAvatarUploaded(ok, reason);      // 解锁"更换头像"按钮
+
+    if (!ok) {
+        QMessageBox::warning(scatWin, "上传失败", reason);
+        return;
+    }
+
+    UserSession& session = UserSession::GetInstance();
+    session.setUser(session.username(), session.nickname(), avatar);
+
+    // 服务端已经有这张图了，但本地缓存还没有。下回来一份，
+    // 这样所有显示头像的地方走的都是同一套"缓存 + 圆形裁剪"逻辑，
+    // 不用为"自己的头像"单开一条特殊路径
+    settingsMgr->downloadAvatar(avatar);
+}
+
+void AppController::onAvatarDownloaded(const QString& avatar)
+{
+    if (!scatWin)
+        return;
+
+    // 是自己的，刷新左上角和设置页
+    if (avatar == UserSession::GetInstance().avatar())
+        scatWin->updateMyAvatar(avatar);
+
+    // 是好友的，刷新列表项和聊天窗顶部
+    scatWin->refreshAvatar(avatar);
 }

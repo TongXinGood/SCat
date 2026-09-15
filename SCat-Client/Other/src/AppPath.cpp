@@ -1,22 +1,36 @@
 #include "../include/AppPath.h"
 #include <QCoreApplication>
+#include <QSettings>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QUuid>
+#include <QDebug>
 
 namespace AppPath
 {
 
+    // 配置里存路径用的键名
+    static const char* kDataRootKey = "storage/dataRoot";
+
+    QString defaultDataRoot()
+    {
+        // 出厂默认：exe 旁边的 data 目录
+        return QCoreApplication::applicationDirPath() + "/data";
+    }
+
     QString dataRoot()
     {
-        // 开发期：放在 exe 旁边的 data/，好找、好删、好备份。
-        //
-        // 以后打包成安装程序时，这里改成：
-        //   1. 先读 QSettings 里用户设置的路径，有就用它
-        //   2. 没设置就用 QStandardPaths::DocumentsLocation + "/SCat Files"
-        // 不要用安装目录 —— 如果用户装在 C:\Program Files\ 下是写不进去的。
-        // 全项目只有这一个函数需要改
-        return QCoreApplication::applicationDirPath() + "/data";
+        // QSettings 在 Windows 上写注册表 HKCU\Software\SCat\SCat-Client，
+        // 一定可写、跟安装目录无关，正好用来存"数据目录在哪"这个信息 ——
+        // 它本身不能存在可配置的目录里，否则就是鸡生蛋
+        QSettings settings;
+        QString custom = settings.value(kDataRootKey).toString();
+
+        if (!custom.isEmpty())
+            return custom;
+
+        return defaultDataRoot();
     }
 
     QString userDir(const QString& user)
@@ -50,4 +64,81 @@ namespace AppPath
         return true;
     }
 
+    // 递归拷贝一个目录，只在本文件内部用
+    static bool copyDirInternal(const QString& from, const QString& to, QString& error)
+    {
+        QDir src(from);
+        if (!src.exists())
+            return true;      // 源目录不存在，没什么可搬的
+
+        QDir().mkpath(to);
+
+        const QFileInfoList list = src.entryInfoList(
+            QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+
+        for (const QFileInfo& info : list) {
+            QString target = to + "/" + info.fileName();
+
+            if (info.isDir()) {
+                if (!copyDirInternal(info.absoluteFilePath(), target, error))
+                    return false;
+            }
+            else {
+                // QFile::copy 遇到已存在的目标会直接失败，得先删掉
+                if (QFile::exists(target))
+                    QFile::remove(target);
+
+                if (!QFile::copy(info.absoluteFilePath(), target)) {
+                    error = "复制失败：" + info.fileName();
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    bool moveDataTo(const QString& newRoot, QString& error)
+    {
+        QString oldRoot = QDir::cleanPath(dataRoot());
+        QString target = QDir::cleanPath(newRoot);
+
+        if (oldRoot == target) {
+            error = "新目录和当前目录是同一个";
+            return false;
+        }
+
+        // 不能搬进自己的子目录，否则边拷边生成，会无限套娃
+        if (target.startsWith(oldRoot + "/")) {
+            error = "不能选择当前数据目录下面的子目录";
+            return false;
+        }
+
+        if (!isWritable(target)) {
+            error = "这个目录没有写入权限，请换一个";
+            return false;
+        }
+
+        if (!copyDirInternal(oldRoot, target, error))
+            return false;
+
+        QSettings settings;
+        settings.setValue(kDataRootKey, target);
+        settings.sync();
+
+        // 旧目录故意不删 —— 万一拷贝有问题数据还在，用户能自己找回来。
+        // 删用户的数据这种事，程序不该擅自做主
+        qDebug() << "data moved:" << oldRoot << "->" << target;
+        return true;
+    }
+    QString avatarCacheDir(const QString& user)
+    {
+        // 这里不建目录 —— 显示头像时会频繁调用，真正写文件的时候再 mkpath
+        return dataRoot() + "/" + user + "/avatars";
+    }
+
+    QString avatarCachePath(const QString& user, const QString& fileName)
+    {
+        return avatarCacheDir(user) + "/" + fileName;
+    }
 }

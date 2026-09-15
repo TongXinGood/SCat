@@ -5,6 +5,16 @@
 #include <QJsonArray>
 #include <QDateTime>
 #include <QRegularExpression>
+#include <QDir>
+#include <QFile>
+#include <QCoreApplication>
+
+static QString avatarDir()
+{
+    QString dir = QCoreApplication::applicationDirPath() + "/avatars";
+    QDir().mkpath(dir);
+    return dir;
+}
 
 void Server::onNewConnection()
 {
@@ -67,6 +77,18 @@ void Server::onPacketReceived(ClientSession* from, quint16 type, const QJsonObje
 
     case MSG_FRIEND_HANDLE_REQ:
         handleFriendHandle(from, obj);
+        break;
+
+    case MSG_SET_NICKNAME_REQ:
+        handleSetNickname(from, obj);
+        break;
+
+    case MSG_SET_AVATAR_REQ:
+        handleSetAvatar(from, obj);
+        break;
+
+    case MSG_GET_AVATAR_REQ:
+        handleGetAvatar(from, obj);
         break;
 
     default:
@@ -573,4 +595,154 @@ void Server::notifyFriendListChanged(const QString& username)
     ClientSession* session = onlineUsers.value(username, nullptr);
     if (session)
         session->sendPacket(MSG_FRIEND_LIST_CHANGED, QJsonObject());
+}
+
+void Server::handleSetNickname(ClientSession* from, const QJsonObject& obj)
+{
+    QJsonObject resp;
+
+    if (!from->isLogined()) {
+        resp["code"] = ERR_NOT_LOGIN;
+        from->sendPacket(MSG_SET_NICKNAME_RESP, resp);
+        return;
+    }
+
+    QString nickname = obj["nickname"].toString().trimmed();
+
+    // 昵称允许中文和各种字符，只限长度。
+    // 数据库字段是 VARCHAR(16)，超了会被 MySQL 截断，所以这里先挡住
+    if (nickname.isEmpty() || nickname.length() > 16) {
+        resp["code"] = ERR_INVALID_PARAM;
+        from->sendPacket(MSG_SET_NICKNAME_RESP, resp);
+        return;
+    }
+
+    if (!db->setNickname(from->username(), nickname)) {
+        resp["code"] = ERR_DB_ERROR;
+        from->sendPacket(MSG_SET_NICKNAME_RESP, resp);
+        return;
+    }
+
+    resp["code"] = ERR_OK;
+    resp["nickname"] = nickname;
+    from->sendPacket(MSG_SET_NICKNAME_RESP, resp);
+
+    qDebug() << "nickname changed:" << from->username() << "->" << nickname;
+
+    // 告诉在线的好友我的资料变了
+    notifyFriendsProfileChanged(from->username());
+}
+
+void Server::notifyFriendsProfileChanged(const QString& username)
+{
+    QList<FriendInfo> list;
+    if (!db->getFriendList(username, list))
+        return;
+
+    // 直接复用第 6 步那条"好友列表变了"的推送 —— 好友收到就重新拉一遍列表，
+    // 新昵称自然就出来了，不用再单独设计一套"资料更新"的包
+    for (const FriendInfo& info : list)
+        notifyFriendListChanged(info.username);
+}
+
+void Server::handleSetAvatar(ClientSession* from, const QJsonObject& obj)
+{
+    QJsonObject resp;
+
+    if (!from->isLogined()) {
+        resp["code"] = ERR_NOT_LOGIN;
+        from->sendPacket(MSG_SET_AVATAR_RESP, resp);
+        return;
+    }
+
+    QByteArray data = QByteArray::fromBase64(obj["data"].toString().toLatin1());
+    if (data.isEmpty()) {
+        resp["code"] = ERR_INVALID_PARAM;
+        from->sendPacket(MSG_SET_AVATAR_RESP, resp);
+        return;
+    }
+
+    QString me = from->username();
+
+    // 文件名带时间戳当版本号 —— 好友本地缓存里没有这个新文件名，
+    // 自然就会重新下载。不用再单独设计一套缓存失效逻辑
+    QString fileName = QString("%1_%2.png")
+        .arg(me).arg(QDateTime::currentMSecsSinceEpoch());
+
+    QString path = avatarDir() + "/" + fileName;
+
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly)) {
+        qDebug() << "save avatar failed:" << path;
+        resp["code"] = ERR_DB_ERROR;
+        from->sendPacket(MSG_SET_AVATAR_RESP, resp);
+        return;
+    }
+    f.write(data);
+    f.close();
+
+    // 先把旧文件名记下来，等数据库更新成功了再删旧文件
+    QString nickname, oldAvatar;
+    db->getUserInfo(me, nickname, oldAvatar);
+
+    if (!db->setAvatar(me, fileName)) {
+        QFile::remove(path);      // 数据库没写进去，刚落盘的文件也别留
+        resp["code"] = ERR_DB_ERROR;
+        from->sendPacket(MSG_SET_AVATAR_RESP, resp);
+        return;
+    }
+
+    // 删掉上一张，不然一个人换十次就堆十个文件。
+    // 出厂默认的 head.png 是客户端内置资源，不在这个目录里，不能删
+    if (!oldAvatar.isEmpty() && oldAvatar != "head.png" && oldAvatar != fileName)
+        QFile::remove(avatarDir() + "/" + oldAvatar);
+
+    resp["code"] = ERR_OK;
+    resp["avatar"] = fileName;
+    from->sendPacket(MSG_SET_AVATAR_RESP, resp);
+
+    qDebug() << "avatar changed:" << me << "->" << fileName
+        << data.size() << "bytes";
+
+    // 好友那边重新拉列表就能拿到新文件名，进而触发下载
+    notifyFriendsProfileChanged(me);
+}
+
+void Server::handleGetAvatar(ClientSession* from, const QJsonObject& obj)
+{
+    QJsonObject resp;
+
+    if (!from->isLogined()) {
+        resp["code"] = ERR_NOT_LOGIN;
+        from->sendPacket(MSG_GET_AVATAR_RESP, resp);
+        return;
+    }
+
+    QString fileName = obj["avatar"].toString().trimmed();
+    resp["avatar"] = fileName;
+
+    // 只接受纯文件名。挡住 "../../xxx" 这种想跳出目录读别的文件的路径 ——
+    // 这不是什么高级安全措施，就两行，但能防止服务端被当成文件下载器
+    if (fileName.isEmpty() || fileName.contains('/')
+        || fileName.contains('\\') || fileName.contains("..")) {
+        resp["code"] = ERR_INVALID_PARAM;
+        from->sendPacket(MSG_GET_AVATAR_RESP, resp);
+        return;
+    }
+
+    QFile f(avatarDir() + "/" + fileName);
+    if (!f.open(QIODevice::ReadOnly)) {
+        resp["code"] = ERR_USER_NOT_FOUND;      // 文件没了，客户端会退回默认头像
+        from->sendPacket(MSG_GET_AVATAR_RESP, resp);
+        return;
+    }
+
+    QByteArray data = f.readAll();
+    f.close();
+
+    resp["code"] = ERR_OK;
+    resp["data"] = QString::fromLatin1(data.toBase64());
+    from->sendPacket(MSG_GET_AVATAR_RESP, resp);
+
+    qDebug() << "avatar sent:" << fileName << data.size() << "bytes";
 }

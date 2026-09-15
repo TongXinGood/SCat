@@ -1,16 +1,15 @@
 #include "../include/RequestItem.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
-#include <QPixmap>
 
 RequestItem::RequestItem(const QString& username, const QString& nickname,
-    const QString& avatarPath, QWidget* parent)
+    const QPixmap& avatar, QWidget* parent)
     : QWidget(parent), user(username)
 {
-    initUI(nickname, avatarPath);
+    initUI(nickname, avatar);
 }
 
-void RequestItem::initUI(const QString& nickname, const QString& avatarPath)
+void RequestItem::initUI(const QString& nickname, const QPixmap& avatar)
 {
     this->setAttribute(Qt::WA_StyledBackground, true);
     this->setObjectName("RequestItem");
@@ -20,10 +19,12 @@ void RequestItem::initUI(const QString& nickname, const QString& avatarPath)
     mainLayout->setSpacing(12);
 
     lbAvatar = new QLabel(this);
+    lbAvatar->setObjectName("ReqAvatar");
     lbAvatar->setFixedSize(44, 44);
-    lbAvatar->setScaledContents(true);
-    lbAvatar->setPixmap(QPixmap(avatarPath));
-    lbAvatar->setStyleSheet("border-radius: 22px; background-color: #EFEBFA;");
+    lbAvatar->setPixmap(avatar);
+    // 传进来的图已经是 44x44 的圆形了，所以：
+    //   1. 不能开 setScaledContents，会把图拉变形
+    //   2. 背景必须透明，圆形图四角是透明的，底下有色块会露出方角
 
     QVBoxLayout* nameLayout = new QVBoxLayout();
     nameLayout->setContentsMargins(0, 0, 0, 0);
@@ -59,6 +60,10 @@ void RequestItem::initUI(const QString& nickname, const QString& avatarPath)
     this->setStyleSheet(R"(
         #RequestItem { background-color: transparent; }
 
+        #ReqAvatar {
+            background: transparent;
+            border: none;
+        }
         #ReqNickname {
             font-size: 15px; font-weight: bold; color: #1A1A1A;
             background: transparent; border: none;

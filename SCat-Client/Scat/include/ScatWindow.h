@@ -6,6 +6,7 @@
 #include "../../Chat/include/ChatWindow.h"
 #include "../../Chat/include/ChatMessage.h"
 #include "../../Other/include/NotifyButton.h"
+#include "../../Setting/include/SettingsPage.h"
 #include <QStackedWidget>
 #include <QWidget>
 #include <QHBoxLayout>
@@ -28,7 +29,14 @@ public:
     void updateFriendStatus(const QString& username, bool online);
     void loadHistory(const QList<ChatMessage>& list);
     void addChatMessage(const ChatMessage& msg);
-    void setRequestCount(int count);        
+    void setRequestCount(int count);    
+    void setSettingsInfo(const QString& username, const QString& nickname,const QString& avatar);
+    void setStoragePath(const QString& path);
+    void onNicknameSaved(bool ok, const QString& reason);
+    void onAvatarUploaded(bool ok, const QString& reason);
+    void updateMyNickname(const QString& nickname);
+    void updateMyAvatar(const QString& avatar);
+    void refreshAvatar(const QString& avatar);
 signals:
     // 抛出给上层或控制器的信号
     void sendSettingsClicked();
@@ -42,6 +50,11 @@ signals:
     void sendMoodClicked(const QString& friendId);
 
     void sendNotifyClicked();
+
+    // 设置页转发上来的
+    void sendChangeAvatar(const QString& filePath);
+    void sendSaveNickname(const QString& nickname);
+    void sendChangeStorage(const QString& dir);
 private slots:
     void onFriendSelected(const QString& friendId, const QString& friendName);
     void onSettingsClicked();
@@ -57,7 +70,6 @@ private:
     void initProfileSection();
     void initConnect();
     void updateNotifyPos();
-    static QString avatarPath(const QString& avatar);
 private:
     // 整个窗口的核心容器，最后会被塞进 NoFrame
     QWidget* centralWidget;
@@ -85,6 +97,8 @@ private:
 
     // 页面 1: 聊天窗口
     ChatWindow* chatWindow;
+
+    SettingsPage* settingsPage;
 
     // 记录当前正在聊天的目标对象
     QString currentFriendId;

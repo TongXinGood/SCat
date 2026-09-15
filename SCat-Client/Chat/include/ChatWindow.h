@@ -20,7 +20,8 @@ public:
     ~ChatWindow();
 
     // --- 外部接口 ---
-    void setChatInfo(const QString& name, const QString& status, const QString& avatarPath);
+    void setChatInfo(const QString& name, const QString& status, const QPixmap& avatar);
+    void setAvatar(const QPixmap& avatar);
     void addMessage(const QString& msg, bool isSelf);
     void addFileMessage(const QString& fileName, const QString& fileSize, bool isSelf);
     void setHistory(const QList<ChatMessage>& list);   // 切换好友时整段重绘

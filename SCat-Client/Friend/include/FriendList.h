@@ -16,8 +16,10 @@ public:
     explicit FriendList(QWidget* parent = nullptr);
     ~FriendList();
 
-    void addFriendItem(const QString& id, const QString& avatarPath, const QString& name, const QString& lastMsg);
+    void addFriendItem(const QString& id, const QPixmap& avatar,const QString& name, const QString& lastMsg);
+    void updateAvatar(const QString& id, const QPixmap& avatar);
     void clearFriends();
+    void clearSelection();
     void updateLastMessage(const QString& id, const QString& msg);
 signals:
     void sendFriendSelected(const QString& friendId, const QString& friendName);

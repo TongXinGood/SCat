@@ -346,3 +346,31 @@ int Database::handleRequest(const QString& receiver, const QString& sender, int 
     db.commit();
     return ERR_OK;
 }
+
+bool Database::setNickname(const QString& username, const QString& nickname)
+{
+    QSqlQuery q(db);
+    q.prepare("UPDATE users SET nickname = ? WHERE username = ?");
+    q.addBindValue(nickname);
+    q.addBindValue(username);
+
+    if (!q.exec()) {
+        qDebug() << "setNickname failed:" << q.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+bool Database::setAvatar(const QString& username, const QString& avatar)
+{
+    QSqlQuery q(db);
+    q.prepare("UPDATE users SET avatar = ? WHERE username = ?");
+    q.addBindValue(avatar);
+    q.addBindValue(username);
+
+    if (!q.exec()) {
+        qDebug() << "setAvatar failed:" << q.lastError().text();
+        return false;
+    }
+    return true;
+}

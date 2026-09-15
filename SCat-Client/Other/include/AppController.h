@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QJsonObject>
+#include <QJsonArray>
 #include "../../NetWork/include/NetWorkManager.h"
 #include "../../Login/include/Login.h"
 #include "../../Login/include/LoginWindow.h"
@@ -15,6 +16,8 @@
 #include "../../Chat/include/ChatMessage.h"
 #include "../../Friend/include/AddFriendWindow.h"
 #include "../../Friend/include/RequestWindow.h"
+#include "../../Setting/include/SettingsManager.h"
+#include "../include/AvatarUtils.h" 
 
 class NetWorkManager;
 class Login;
@@ -27,6 +30,7 @@ class ChatStorage;
 class ChatNetWork;
 class AddFriendWindow;
 class RequestWindow;
+class SettingsManager;
 
 class AppController : public QObject
 {
@@ -73,7 +77,17 @@ private slots:
     // 网络状态
     void onNetError(const QString& msg);
 
+    // 设置
+    void onSaveNickname(const QString& nickname);
+    void onNicknameSaved(bool ok, const QString& nickname, const QString& reason);
+    void onChangeStorage(const QString& dir);
+    void onChangeAvatar(const QString& filePath);
+    void onAvatarUploaded(bool ok, const QString& avatar, const QString& reason);
+    void onAvatarDownloaded(const QString& avatar);
+
 private:
+    void updatePendingUi();
+
     NetWorkManager* net;
     Login* loginLogic;
     Register* regLogic;
@@ -86,7 +100,9 @@ private:
     ChatStorage* storage;
     AddFriendWindow* addFriendWin;
     RequestWindow* requestWin;
-    int pendingCount;      
+    int pendingCount;     
+    QJsonArray pendingRequests;
+    SettingsManager* settingsMgr;
 };
 
 #endif // !APPCONTROLLER_H
