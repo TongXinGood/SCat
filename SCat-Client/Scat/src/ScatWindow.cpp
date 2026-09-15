@@ -397,3 +397,9 @@ QString ScatWindow::nicknameOf(const QString& username) const
 
     return nickname.isEmpty() ? username : nickname;
 }
+
+QPixmap ScatWindow::avatarOf(const QString& username, int size) const
+{
+    QJsonObject info = friendInfos.value(username);
+    return AvatarUtils::load(info["avatar"].toString(), size);
+}

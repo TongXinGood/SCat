@@ -39,6 +39,7 @@ public:
     void refreshAvatar(const QString& avatar);
     void selectFriend(const QString& username);              // 点通知时切到这个会话
     QString nicknameOf(const QString& username) const;       // 弹通知时拿昵称当标题
+    QPixmap avatarOf(const QString& username, int size) const;
 signals:
     // 抛出给上层或控制器的信号
     void sendSettingsClicked();

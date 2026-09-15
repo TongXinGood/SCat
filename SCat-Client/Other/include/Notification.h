@@ -2,6 +2,7 @@
 #define NOTIFICATION_H
 
 #include <QObject>
+#include <QIcon>
 #include <QSystemTrayIcon>
 
 // 托盘图标 + 桌面通知（Windows 右下角弹的那种）。
@@ -17,7 +18,7 @@ public:
     bool isAvailable() const { return tray != nullptr; }
 
     // 弹一条桌面通知。peer 是发消息的人，点通知时要跳到他的会话
-    void showMessage(const QString& peer, const QString& title, const QString& content);
+    void showMessage(const QString& peer, const QString& title,const QString& content, const QIcon& icon = QIcon());
 
 signals:
     void notificationClicked(const QString& peer);   // 用户点了通知气泡

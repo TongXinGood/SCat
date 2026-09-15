@@ -33,16 +33,20 @@ Notification::Notification(QObject* parent)
 }
 
 void Notification::showMessage(const QString& peer, const QString& title,
-    const QString& content)
+    const QString& content, const QIcon& icon)
 {
     if (!tray)
         return;
 
     lastPeer = peer;
 
+    // 用 QIcon 这个重载，就不会是系统那个蓝色感叹号了。
+    // 传空就退回应用 logo
+    QIcon shown = icon.isNull() ? QIcon(":/Resource/icon/logo.png") : icon;
+
     // 最后那个 5000 是显示时长（毫秒），不过 Windows 10/11 上
     // 实际时长由系统说了算，传什么它不一定听
-    tray->showMessage(title, content, QSystemTrayIcon::Information, 5000);
+    tray->showMessage(title, content, shown, 5000);
 }
 
 void Notification::onMessageClicked()

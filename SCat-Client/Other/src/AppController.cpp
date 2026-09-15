@@ -246,14 +246,19 @@ void AppController::onMessageReceived(const ChatMessage& msg)
 {
     storage->addMessage(msg);
 
-    if (scatWin)
-        scatWin->addChatMessage(msg);
+    if (!scatWin)
+        return;
 
     scatWin->addChatMessage(msg);
 
-    // 窗口不在最前面才弹通知 —— 用户正盯着聊天窗还弹一下很烦
-    if (!scatWin->isActiveWindow())
-        notify->showMessage(msg.from, scatWin->nicknameOf(msg.from), msg.content);
+    // 窗口不在最前面才弹通知 —— 用户正盯着聊天窗还弹一下很烦。
+    // 通知图标用对方的头像，比系统那个蓝色感叹号好认
+    if (!scatWin->isActiveWindow()) {
+        notify->showMessage(msg.from,
+            scatWin->nicknameOf(msg.from),
+            msg.content,
+            QIcon(scatWin->avatarOf(msg.from, 64)));
+    }
 }
 
 void AppController::onChatSendFailed(const QString& reason)

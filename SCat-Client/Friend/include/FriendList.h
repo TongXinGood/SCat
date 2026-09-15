@@ -6,6 +6,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QLabel>
+#include <QPixmap>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 
@@ -16,13 +17,16 @@ public:
     explicit FriendList(QWidget* parent = nullptr);
     ~FriendList();
 
-    void addFriendItem(const QString& id, const QPixmap& avatar,const QString& name, const QString& lastMsg);
-    void updateAvatar(const QString& id, const QPixmap& avatar);
+    void addFriendItem(const QString& id, const QPixmap& avatar,
+        const QString& name, const QString& lastMsg);
     void clearFriends();
     void clearSelection();
+
     void updateLastMessage(const QString& id, const QString& msg);
+    void updateAvatar(const QString& id, const QPixmap& avatar);
     void setUnread(const QString& id, int count);
-    void selectFriend(const QString& id);        // 点通知时用，程序化选中某个好友
+    void selectFriend(const QString& id);        // 点通知时程序化选中某个好友
+
 signals:
     void sendFriendSelected(const QString& friendId, const QString& friendName);
     void sendFriendUnselected();
@@ -39,7 +43,6 @@ private:
 
 private:
     QVBoxLayout* mainLayout;
-    QString currentId;
 
     // 搜索区域组合控件
     QWidget* searchContainer;
@@ -49,6 +52,8 @@ private:
     QPushButton* btnAdd;
 
     QListWidget* listWidget;
+
+    QString currentId;      // 当前选中的好友，空 = 没选中
 };
 
 #endif // FRIENDLIST_H
