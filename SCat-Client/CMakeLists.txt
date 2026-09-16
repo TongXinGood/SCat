@@ -71,6 +71,9 @@ add_executable(SCat-Client
        "resource.qrc" "NetWork/include/NetWorkManager.h" "NetWork/src/NetWorkManager.cpp" "Friend/include/FriendListitem.h" "Friend/src/FriendListitem.cpp" "Other/src/UserSession.cpp"
         "Other/include/UserSession.h"  "Protocol.h" "NoFrame.h" "NoFrame.cpp" "Other/include/AppController.h" "Other/src/AppController.cpp" )
 
+    set_target_properties(SCat-Client PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>  OUTPUT_NAME "SCat")
+
+
 # 7. 链接库
 target_link_libraries(SCat-Client PRIVATE
     Qt6::Core

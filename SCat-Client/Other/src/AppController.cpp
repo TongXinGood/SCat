@@ -1,7 +1,11 @@
 #include "../include/AppController.h"
 #include "../include/UserSession.h"
 #include "../include/AppPath.h"
+#include "../include/AvatarUtils.h"
 #include <QMessageBox>
+#include <QSettings>
+#include <QFile>
+#include <QCoreApplication>
 #include <QDebug>
 
 AppController::AppController(QObject* parent)
@@ -68,7 +72,25 @@ AppController::~AppController()
 
 void AppController::start()
 {
-    net->connectToServer("127.0.0.1", 8888);
+    // 服务器地址放在 exe 旁边的 config.ini 里。
+    // 换机器部署时只要改这个文件，不用重新编译
+    QString cfgPath = QCoreApplication::applicationDirPath() + "/config.ini";
+    QSettings cfg(cfgPath, QSettings::IniFormat);
+
+    QString host = cfg.value("server/host", "127.0.0.1").toString();
+    quint16 port = static_cast<quint16>(cfg.value("server/port", 8888).toUInt());
+
+    // 文件不存在就按默认值生成一份，用户拿到手就知道能改什么
+    if (!QFile::exists(cfgPath)) {
+        cfg.setValue("server/host", host);
+        cfg.setValue("server/port", port);
+        cfg.sync();
+        qDebug() << "config.ini created:" << cfgPath;
+    }
+
+    qDebug() << "connecting to" << host << ":" << port;
+
+    net->connectToServer(host, port);
     showLoginWindow();
 }
 
