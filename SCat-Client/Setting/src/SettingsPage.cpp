@@ -101,7 +101,7 @@ void SettingsPage::initUI()
 
     QWidget* column = new QWidget(content);
     column->setObjectName("SettingsColumn");
-    column->setMaximumWidth(560);
+    column->setMaximumWidth(760);
     column->setMinimumWidth(340);
 
     QVBoxLayout* contentLayout = new QVBoxLayout(column);
@@ -109,7 +109,7 @@ void SettingsPage::initUI()
     contentLayout->setSpacing(16);
 
     outer->addStretch(1);
-    outer->addWidget(column, 4);
+    outer->addWidget(column, 8);
     outer->addStretch(1);
 
     // ---------- 卡片 1：头像 ----------

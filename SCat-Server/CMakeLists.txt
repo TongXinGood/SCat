@@ -1,6 +1,8 @@
 ﻿cmake_minimum_required(VERSION 3.16)
 
-set(CMAKE_PREFIX_PATH "D:/Qt/6.11.1/msvc2022_64")
+if(WIN32)
+    set(CMAKE_PREFIX_PATH "D:/Qt/6.11.1/msvc2022_64")
+endif()
 
 project(SCat-Server LANGUAGES CXX)
 

@@ -95,7 +95,7 @@ void LoginWindow::initUI()
     mainlayout->addWidget(editaccount);
     mainlayout->addWidget(editpwd);
     mainlayout->addWidget(checkrem);
-    mainlayout->addSpacing(10);
+    //mainlayout->addSpacing(0);
     mainlayout->addWidget(btnLogin);
     mainlayout->addWidget(btnRegister);
     mainlayout->addStretch();

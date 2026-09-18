@@ -145,7 +145,7 @@ void ChatWindow::initInput()
         "   background: transparent;"
         "   font-size: 14px;"
         "   color: #333;"
-        "   padding-top: 10px;"
+        "   padding-top: 8px;"
         "}"
     );
     msgEdit->setFixedHeight(40);

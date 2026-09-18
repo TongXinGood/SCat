@@ -146,7 +146,7 @@ void ScatWindow::initProfileSection()
     btnSettings->setFixedSize(24, 24);
     btnSettings->setCursor(Qt::PointingHandCursor);
     btnSettings->setIcon(QIcon(":/Resource/icon/settings.png")); // 记得添加实际资源
-    btnSettings->setIconSize(QSize(20, 20));
+    btnSettings->setIconSize(QSize(22, 22));
     btnSettings->setStyleSheet(
         "QPushButton { border: none; background: transparent; }"
         "QPushButton:hover { background-color: #F0F0F0; border-radius: 12px; }"

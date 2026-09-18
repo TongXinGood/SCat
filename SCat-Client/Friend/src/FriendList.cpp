@@ -29,13 +29,11 @@ void FriendList::initUI()
         "   background-color: #FFFFFF; "
         "   border-radius: 6px; "
         "   border: 1px solid #E5E5E5; "
-        "   margin-left: 10px; "
-        "   margin-right: 10px; "
         "}"
     );
 
     searchLayout = new QHBoxLayout(searchContainer);
-    searchLayout->setContentsMargins(10, 0, 10, 0);
+    searchLayout->setContentsMargins(10, 0, 9, 0);
     searchLayout->setSpacing(8);
 
     lbSearchIcon = new QLabel(searchContainer);
@@ -59,7 +57,7 @@ void FriendList::initUI()
     btnAdd->setFixedSize(24, 24);
     btnAdd->setCursor(Qt::PointingHandCursor);
     btnAdd->setIcon(QIcon(":/Resource/icon/add.png"));
-    btnAdd->setIconSize(QSize(16, 16));
+    btnAdd->setIconSize(QSize(15, 15));
     btnAdd->setStyleSheet(
         "QPushButton { "
         "   border: none; "
@@ -101,8 +99,12 @@ void FriendList::initUI()
         "   border: none;"
         "}"
     );
+    QHBoxLayout* searchRow = new QHBoxLayout();
+    searchRow->setContentsMargins(10, 0, 10, 0);
+    searchRow->setSpacing(0);
+    searchRow->addWidget(searchContainer);
 
-    mainLayout->addWidget(searchContainer);
+    mainLayout->addLayout(searchRow);
     mainLayout->addWidget(listWidget);
 }
 
