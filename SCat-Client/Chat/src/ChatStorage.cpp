@@ -49,6 +49,8 @@ bool ChatStorage::open(const QString& user)
     if (!migrateTables())
         return false;
 
+    resetPendingTransfers();
+
     owner = user;
     qDebug() << "chat db opened:" << path;
     return true;
@@ -294,4 +296,105 @@ void ChatStorage::clearAll()
     // DELETE 只是把空间标记成可复用，文件大小纹丝不动。
     // VACUUM 会重建整个文件，才是真正把空间还给系统
     q.exec("VACUUM");
+}
+
+void ChatStorage::updateFileState(const QString& msgid, int state,
+    const QString& fileId)
+{
+    if (!db.isOpen())
+        return;
+
+    QSqlQuery q(db);
+
+    // fileId 为空时不要去覆盖已有的值 —— 失败重试、取消这些场景
+    // 都不带 fileId，写空了下次就找不到服务端那个文件了
+    if (fileId.isEmpty()) {
+        q.prepare("UPDATE messages SET file_state = ? WHERE msgid = ?");
+        q.addBindValue(state);
+        q.addBindValue(msgid);
+    }
+    else {
+        q.prepare("UPDATE messages SET file_state = ?, file_id = ? WHERE msgid = ?");
+        q.addBindValue(state);
+        q.addBindValue(fileId);
+        q.addBindValue(msgid);
+    }
+
+    if (!q.exec())
+        qDebug() << "updateFileState failed:" << q.lastError().text();
+}
+
+void ChatStorage::updateFilePath(const QString& msgid, const QString& filePath)
+{
+    if (!db.isOpen())
+        return;
+
+    QSqlQuery q(db);
+    q.prepare("UPDATE messages SET file_path = ? WHERE msgid = ?");
+    q.addBindValue(filePath);
+    q.addBindValue(msgid);
+
+    if (!q.exec())
+        qDebug() << "updateFilePath failed:" << q.lastError().text();
+}
+
+bool ChatStorage::messageById(const QString& msgid, ChatMessage& out) const
+{
+    if (!db.isOpen())
+        return false;
+
+    QSqlQuery q(db);
+    q.prepare("SELECT msgid, sender, receiver, content, time, is_self, "
+        "kind, img_name, img_w, img_h, "
+        "file_id, file_name, file_size, file_path, file_state "
+        "FROM messages WHERE msgid = ?");
+    q.addBindValue(msgid);
+
+    if (!q.exec() || !q.next())
+        return false;
+
+    out.msgid = q.value(0).toString();
+    out.from = q.value(1).toString();
+    out.to = q.value(2).toString();
+    out.content = q.value(3).toString();
+    out.time = q.value(4).toLongLong();
+    out.isSelf = q.value(5).toInt() != 0;
+    out.kind = q.value(6).toInt();
+    out.imgName = q.value(7).toString();
+    out.imgW = q.value(8).toInt();
+    out.imgH = q.value(9).toInt();
+    out.fileId = q.value(10).toString();
+    out.fileName = q.value(11).toString();
+    out.fileSize = q.value(12).toLongLong();
+    out.filePath = q.value(13).toString();
+    out.fileState = q.value(14).toInt();
+
+    return true;
+}
+
+void ChatStorage::resetPendingTransfers()
+{
+    if (!db.isOpen())
+        return;
+
+    QSqlQuery q(db);
+
+    // 自己发的传一半没了 -> 失败。源文件还在自己盘上，点重试从头传
+    q.prepare("UPDATE messages SET file_state = ? "
+        "WHERE file_state = ? AND is_self = 1");
+    q.addBindValue(FILE_STATE_FAILED);
+    q.addBindValue(FILE_STATE_SENDING);
+
+    if (!q.exec())
+        qDebug() << "reset sending failed:" << q.lastError().text();
+
+    // 别人发来的下一半没了 -> 回到"等待下载"，不是失败。
+    // 文件还在服务端躺着（3 天内），重新点一下就行
+    q.prepare("UPDATE messages SET file_state = ? "
+        "WHERE file_state = ? AND is_self = 0");
+    q.addBindValue(FILE_STATE_READY);
+    q.addBindValue(FILE_STATE_DOWNLOADING);
+
+    if (!q.exec())
+        qDebug() << "reset downloading failed:" << q.lastError().text();
 }

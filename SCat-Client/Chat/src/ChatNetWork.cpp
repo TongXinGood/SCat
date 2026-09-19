@@ -134,6 +134,19 @@ void ChatNetWork::fillImage(ChatMessage& msg, const QJsonObject& obj)
         qDebug() << "save received image failed, msgid:" << msg.msgid;
 }
 
+void ChatNetWork::fillFile(ChatMessage& msg, const QJsonObject& obj)
+{
+    if (msg.kind != KIND_FILE)
+        return;
+
+    msg.fileId = obj["fileId"].toString();
+    msg.fileName = obj["fileName"].toString();
+    msg.fileSize = obj["fileSize"].toVariant().toLongLong();
+
+    // 先摆在那儿等用户点下载。filePath 留空表示还没下到本地
+    msg.fileState = FILE_STATE_READY;
+}
+
 void ChatNetWork::handleChatPush(const QJsonObject& obj)
 {
     ChatMessage msg;
@@ -146,6 +159,8 @@ void ChatNetWork::handleChatPush(const QJsonObject& obj)
     msg.kind = obj["kind"].toInt();
 
     fillImage(msg, obj);
+    fillFile(msg, obj);
+
     qDebug() << "chat received from" << msg.from;
 
     emit messageReceived(msg);
@@ -172,6 +187,7 @@ void ChatNetWork::handleOfflinePush(const QJsonObject& obj)
         msg.kind = item["kind"].toInt();
 
         fillImage(msg, item);
+        fillFile(msg, item);
 
         // 走跟在线消息完全一样的路径：上层负责存本地 + 上屏。
         // 这里是同步调用，返回时消息已经进数据库了，所以下面确认是安全的

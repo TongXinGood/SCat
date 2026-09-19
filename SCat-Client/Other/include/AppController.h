@@ -86,6 +86,13 @@ private slots:
     void onFileProgress(const QString& taskId, qint64 done, qint64 total);
     void onFileFinished(const QString& taskId, const QString& fileId);
     void onFileFailed(const QString& taskId, const QString& reason);
+    void onFileCanceled(const QString& taskId);
+
+    void onFileCancelClicked(const QString& msgid);
+    void onFileRetryClicked(const QString& msgid, const QString& to,const QString& filePath);
+    void onFileOpenClicked(const QString& msgid, const QString& filePath);
+    void onFileDownloadClicked(const QString& msgid);
+    void onFileDownloaded(const QString& taskId, const QString& filePath);
 
     // 网络状态
     void onNetError(const QString& msg);

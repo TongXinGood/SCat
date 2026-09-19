@@ -28,6 +28,10 @@ namespace AppPath
     QString fileDir(const QString& user);
     QString filePath(const QString& user, const QString& fileName);
 
+    // 删掉上次没下完留下的 .part 临时文件，返回删了几个。
+    // 正常中断 FileTransfer 会自己清，这是给强杀进程兜底的
+    int cleanPartFiles(const QString& user);
+
     // 这个目录能不能写
     bool isWritable(const QString& dir);
 

@@ -259,9 +259,14 @@ QWidget* ChatWindow::createImageBubbleWidget(const ChatMessage& msg)
 
 void ChatWindow::addBubble(const ChatMessage& msg)
 {
-    QWidget* bubbleWidget = (msg.kind == KIND_IMAGE)
-        ? createImageBubbleWidget(msg)
-        : createBubbleWidget(msg.content, msg.isSelf);
+    QWidget* bubbleWidget = nullptr;
+
+    if (msg.kind == KIND_IMAGE)
+        bubbleWidget = createImageBubbleWidget(msg);
+    else if (msg.kind == KIND_FILE)
+        bubbleWidget = createFileBubbleWidget(msg);
+    else
+        bubbleWidget = createBubbleWidget(msg.content, msg.isSelf);
 
     QListWidgetItem* item = new QListWidgetItem(msgList);
     item->setSizeHint(bubbleWidget->sizeHint());
@@ -270,83 +275,23 @@ void ChatWindow::addBubble(const ChatMessage& msg)
     msgList->scrollToBottom();
 }
 
-QWidget* ChatWindow::createFileBubbleWidget(const QString& fileName, const QString& fileSize, bool isSelf)
+QWidget* ChatWindow::createFileBubbleWidget(const ChatMessage& msg)
 {
-    QWidget* widget = new QWidget();
-    widget->setStyleSheet("background-color: transparent;");
-    QHBoxLayout* mainLayout = new QHBoxLayout(widget);
-    mainLayout->setContentsMargins(10, 5, 10, 5);
+    FileBubble* bubble = new FileBubble(msg);
 
-    QWidget* bubbleContent = new QWidget();
-    bubbleContent->setAttribute(Qt::WA_StyledBackground, true);
-    bubbleContent->setFixedSize(240, 75);
+    // 记进表里，进度信号回来时才找得到它。
+    // 这张表在 setHistory 里会被清空重建 —— 切会话时 QListWidget
+    // 会把所有 item widget 销毁，表里留着就全是野指针了
+    fileBubbles.insert(msg.msgid, bubble);
 
-    QHBoxLayout* contentLayout = new QHBoxLayout(bubbleContent);
-    contentLayout->setContentsMargins(15, 10, 15, 10);
+    connect(bubble, &FileBubble::cancelClicked, this, &ChatWindow::fileCancelClicked);
+    connect(bubble, &FileBubble::retryClicked, this, &ChatWindow::fileRetryClicked);
+    connect(bubble, &FileBubble::openClicked, this, &ChatWindow::fileOpenClicked);
+    connect(bubble, &FileBubble::downloadClicked, this, &ChatWindow::fileDownloadClicked);
 
-    QLabel* iconLabel = new QLabel(bubbleContent);
-    iconLabel->setFixedSize(40, 40);
-    iconLabel->setPixmap(QPixmap(":/Resource/icon/folder.png").scaled(40, 40));
-    iconLabel->setStyleSheet("background: transparent; border: none;");
-
-    QWidget* textRegion = new QWidget(bubbleContent);
-    textRegion->setStyleSheet("background: transparent; border: none;");
-    QVBoxLayout* textLayout = new QVBoxLayout(textRegion);
-    textLayout->setContentsMargins(0, 0, 0, 0);
-    textLayout->setSpacing(4);
-
-    QLabel* nameLabel = new QLabel(fileName, textRegion);
-    QFont nameFont("Microsoft YaHei", 9, QFont::Bold);
-    nameLabel->setFont(nameFont);
-    nameLabel->setText(QFontMetrics(nameFont).elidedText(fileName, Qt::ElideMiddle, 140));
-    nameLabel->setStyleSheet("border: none; background: transparent;");
-
-    QLabel* sizeLabel = new QLabel(fileSize, textRegion);
-    sizeLabel->setStyleSheet("border: none; background: transparent; font-size: 10px;");
-
-    textLayout->addWidget(nameLabel);
-    textLayout->addWidget(sizeLabel);
-
-    contentLayout->addWidget(iconLabel);
-    contentLayout->addWidget(textRegion);
-
-    if (isSelf) {
-        bubbleContent->setStyleSheet("QWidget { background-color: #20202E; border-radius: 12px; }");
-        nameLabel->setStyleSheet("color: white;");
-        sizeLabel->setStyleSheet("color: #AAAAAA;");
-        mainLayout->addStretch();
-        mainLayout->addWidget(bubbleContent);
-    }
-    else {
-        bubbleContent->setStyleSheet("QWidget { background-color: #FFFFFF; border-radius: 12px; }");
-        nameLabel->setStyleSheet("color: black;");
-        sizeLabel->setStyleSheet("color: #666666;");
-        mainLayout->addWidget(bubbleContent);
-        mainLayout->addStretch();
-    }
-    return widget;
+    return bubble;
 }
 
-void ChatWindow::addMessage(const QString& msg, bool isSelf)
-{
-    QWidget* bubbleWidget = createBubbleWidget(msg, isSelf);
-    QListWidgetItem* item = new QListWidgetItem(msgList);
-    item->setSizeHint(bubbleWidget->sizeHint());
-    item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
-    msgList->setItemWidget(item, bubbleWidget);
-    msgList->scrollToBottom();
-}
-
-void ChatWindow::addFileMessage(const QString& fileName, const QString& fileSize, bool isSelf)
-{
-    QWidget* bubbleWidget = createFileBubbleWidget(fileName, fileSize, isSelf);
-    QListWidgetItem* item = new QListWidgetItem(msgList);
-    QSize size = bubbleWidget->sizeHint();
-    item->setSizeHint(QSize(size.width(), size.height() + 10));
-    item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
-    msgList->setItemWidget(item, bubbleWidget);
-    msgList->scrollToBottom();
-}
 
 bool ChatWindow::eventFilter(QObject* watched, QEvent* event)
 {
@@ -417,6 +362,8 @@ void ChatWindow::setChatInfo(const QString& name, const QString& status,
 
 void ChatWindow::setHistory(const QList<ChatMessage>& list)
 {
+    fileBubbles.clear();
+
     msgList->clear();
 
     for (const ChatMessage& msg : list)
@@ -433,4 +380,27 @@ void ChatWindow::appendMessage(const ChatMessage& msg)
 void ChatWindow::setAvatar(const QPixmap& avatar)
 {
     lbAvatar->setPixmap(avatar);
+}
+
+void ChatWindow::updateFileProgress(const QString& msgid, qint64 done, qint64 total)
+{
+    FileBubble* bubble = fileBubbles.value(msgid, nullptr);
+
+    // 找不到说明这条消息不在当前会话里（用户切到别人那儿去了）。
+    // 传输本身在 FileTransfer 里照常跑，切回来时气泡会按最新状态重建
+    if (bubble)
+        bubble->setProgress(done, total);
+}
+
+void ChatWindow::updateFileState(const QString& msgid, int state,
+    const QString& filePath)
+{
+    FileBubble* bubble = fileBubbles.value(msgid, nullptr);
+    if (!bubble)
+        return;
+
+    if (!filePath.isEmpty())
+        bubble->setFilePath(filePath);
+
+    bubble->setState(state);
 }

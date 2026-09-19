@@ -24,6 +24,18 @@ public:
 
     void addMessage(const ChatMessage& msg);
 
+    // 文件消息的状态是会变的（发送中 -> 已发送 / 失败），
+    // 单独给一个更新接口。fileId 只有上传成功那一下才有值
+    void updateFileState(const QString& msgid, int state,const QString& fileId = QString());
+
+    // 下载完成后记下文件存到哪了
+    void updateFilePath(const QString& msgid, const QString& filePath);
+
+    // 按 msgid 取一条消息。点"下载"时要从这里拿 fileId 和文件大小
+    bool messageById(const QString& msgid, ChatMessage& out) const;
+
+    void resetPendingTransfers();
+
     // 取跟某个人的聊天记录，默认只取最近 200 条。
     // 一次全读出来的话，聊了几万条以后切会话会卡
     QList<ChatMessage> loadHistory(const QString& peer, int limit = 200) const;

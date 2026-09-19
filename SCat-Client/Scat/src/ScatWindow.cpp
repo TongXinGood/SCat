@@ -168,6 +168,10 @@ void ScatWindow::initConnect()
     connect(friendList, &FriendList::sendFriendUnselected, this, &ScatWindow::onFriendUnselected);
     // 绑定右侧信号
     connect(chatWindow, &ChatWindow::sendTextMsg, this, &ScatWindow::onChatTextMsgSent);
+    connect(chatWindow, &ChatWindow::fileCancelClicked, this, &ScatWindow::fileCancelClicked);
+    connect(chatWindow, &ChatWindow::fileRetryClicked, this, &ScatWindow::fileRetryClicked);
+    connect(chatWindow, &ChatWindow::fileOpenClicked, this, &ScatWindow::fileOpenClicked);
+    connect(chatWindow, &ChatWindow::fileDownloadClicked, this, &ScatWindow::fileDownloadClicked);
     connect(settingsPage, &SettingsPage::sendChangeAvatar, this, &ScatWindow::sendChangeAvatar);
     connect(settingsPage, &SettingsPage::sendSaveNickname, this, &ScatWindow::sendSaveNickname);
     connect(settingsPage, &SettingsPage::sendChangeStorage, this, &ScatWindow::sendChangeStorage);
@@ -406,4 +410,15 @@ QPixmap ScatWindow::avatarOf(const QString& username, int size) const
 {
     QJsonObject info = friendInfos.value(username);
     return AvatarUtils::load(info["avatar"].toString(), size);
+}
+
+void ScatWindow::updateFileProgress(const QString& msgid, qint64 done, qint64 total)
+{
+    chatWindow->updateFileProgress(msgid, done, total);
+}
+
+void ScatWindow::updateFileState(const QString& msgid, int state,
+    const QString& filePath)
+{
+    chatWindow->updateFileState(msgid, state, filePath);
 }

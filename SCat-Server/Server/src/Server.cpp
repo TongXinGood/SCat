@@ -9,6 +9,8 @@
 #include <QFile>
 #include <QCoreApplication>
 
+static const qint64 kMaxPending = 2LL * FILE_CHUNK_SIZE;
+
 static QString avatarDir()
 {
     QString dir = QCoreApplication::applicationDirPath() + "/avatars";
@@ -35,7 +37,8 @@ void Server::onNewConnection()
             this, &Server::onPacketReceived);
         connect(session, &ClientSession::closed,
             this, &Server::onSessionClosed);
-
+        connect(session, &ClientSession::bytesWritten,
+            this, &Server::onSessionBytesWritten);
         qDebug() << "new client:" << session->peerInfo()
             << "| online:" << sessions.size();
     }
@@ -115,6 +118,10 @@ void Server::onPacketReceived(ClientSession* from, quint16 type, const QJsonObje
         handleFileCancel(from, obj);
         break;
 
+    case MSG_FILE_PULL_REQ:
+        handleFilePull(from, obj);
+        break;
+
     default:
         qDebug() << "unknown type:" << type;
         break;
@@ -129,6 +136,12 @@ void Server::onSessionClosed(ClientSession* session)
     for (const QString& id : ids) {
         if (uploads.value(id).from == session)
             abortUpload(id);
+    }
+
+    const QStringList dlIds = downloads.keys();
+    for (const QString& id : dlIds) {
+        if (downloads.value(id).to == session)
+            abortDownload(id);
     }
 
     if (session->isLogined()) {
@@ -151,7 +164,7 @@ void Server::onSessionClosed(ClientSession* session)
 }
 
 Server::Server(Database* db, QObject* parent)
-    : QObject(parent), db(db)
+    : QObject(parent), db(db), cleanTimer(nullptr)
 {
     server = new QTcpServer(this);
     connect(server, &QTcpServer::newConnection,
@@ -165,6 +178,14 @@ bool Server::start(quint16 port)
         return false;
     }
     qDebug() << "server listening on port" << port;
+    // 每小时扫一次过期文件
+    cleanTimer = new QTimer(this);
+    connect(cleanTimer, &QTimer::timeout, this, &Server::onCleanTimer);
+    cleanTimer->start(60 * 60 * 1000);
+
+    // 启动时先跑一遍。服务端可能停了好几天，
+    // 一开机就该把该删的删掉，别等一小时之后
+    cleanExpiredFiles();
     return true;
 }
 
@@ -965,18 +986,24 @@ void Server::handleFileEnd(ClientSession* from, const QJsonObject& obj)
     qDebug() << "file received:" << up.fileName << up.received << "bytes"
         << from->username() << "->" << up.receiver;
 
-    // 第 4 步再在这里把文件消息推给接收方（在线推 / 不在线存 offline_msg）
+    // 文件完整收下了，现在才生成聊天消息。
+    // 早推的话对方点下载会下到一个半截文件
+    deliverFileMessage(from->username(), up.receiver, fileId,up.fileName, up.received);
 }
 
 void Server::handleFileCancel(ClientSession* from, const QJsonObject& obj)
 {
     QString fileId = obj["fileId"].toString();
 
-    auto it = uploads.find(fileId);
-    if (it == uploads.end() || it.value().from != from)
+    auto up = uploads.find(fileId);
+    if (up != uploads.end() && up.value().from == from) {
+        abortUpload(fileId);
         return;
+    }
 
-    abortUpload(fileId);
+    auto dl = downloads.find(fileId);
+    if (dl != downloads.end() && dl.value().to == from)
+        abortDownload(fileId);
 }
 
 void Server::abortUpload(const QString& fileId)
@@ -994,5 +1021,255 @@ void Server::abortUpload(const QString& fileId)
     QFile::remove(fileDir() + "/" + fileId);
     db->deleteFile(fileId);
 
+    if (up.from) {
+        QJsonObject resp;
+        resp["fileId"] = fileId;
+        resp["code"] = ERR_FILE_IO;
+        up.from->sendPacket(MSG_FILE_END_RESP, resp);
+    }
+
     qDebug() << "upload aborted:" << fileId << up.fileName;
+}
+
+void Server::deliverFileMessage(const QString& sender, const QString& receiver,
+    const QString& fileId, const QString& fileName, qint64 fileSize)
+{
+    // 时间戳和 msgid 统一由服务端生成，跟文本消息一个规矩
+    qint64 time = QDateTime::currentMSecsSinceEpoch();
+    QString msgid = QUuid::createUuid().toString(QUuid::WithoutBraces);
+
+    ClientSession* target = onlineUsers.value(receiver, nullptr);
+
+    if (target) {
+        QJsonObject push;
+        push["msgid"] = msgid;
+        push["from"] = sender;
+        push["to"] = receiver;
+        push["content"] = QStringLiteral("[文件]");
+        push["time"] = time;
+        push["kind"] = KIND_FILE;
+        push["fileId"] = fileId;
+        push["fileName"] = fileName;
+        push["fileSize"] = fileSize;
+
+        target->sendPacket(MSG_CHAT_PUSH, push);
+
+        qDebug() << "file message pushed:" << sender << "->" << receiver
+            << fileName;
+        return;
+    }
+
+    // 对方不在线，消息进 offline_msg 等他上线。
+    // 文件本体照样在 files/ 里躺着，3 天内他随时能来取
+    OfflineMsg m;
+    m.msgid = msgid;
+    m.sender = sender;
+    m.receiver = receiver;
+    m.content = QStringLiteral("[文件]");
+    m.time = time;
+    m.kind = KIND_FILE;
+    m.fileId = fileId;
+    m.fileName = fileName;
+    m.fileSize = fileSize;
+
+    if (db->addOfflineMsg(m))
+        qDebug() << "file message stored offline:" << sender << "->" << receiver;
+    else
+        qDebug() << "store offline failed:" << receiver;
+}
+
+// ---------- 文件下载 ----------
+
+void Server::handleFilePull(ClientSession* from, const QJsonObject& obj)
+{
+    QJsonObject resp;
+    QString fileId = obj["fileId"].toString();
+    resp["fileId"] = fileId;
+
+    if (!from->isLogined()) {
+        resp["code"] = ERR_NOT_LOGIN;
+        from->sendPacket(MSG_FILE_PULL_RESP, resp);
+        return;
+    }
+
+    // 同一个文件已经在下了，别重复开一份句柄
+    if (downloads.contains(fileId))
+        return;
+
+    FileInfo info;
+
+    // 查不到、或者还没传完整，都不给下 ——
+    // 没传完的文件下下去就是个残废
+    if (!db->getFile(fileId, info) || !info.finished) {
+        resp["code"] = ERR_FILE_NOT_FOUND;
+        from->sendPacket(MSG_FILE_PULL_RESP, resp);
+        return;
+    }
+
+    // 只有收件人本人能下。不查这一条的话，谁猜到 fileId 谁就能下别人的文件
+    if (info.receiver != from->username()) {
+        qDebug() << "file pull denied:" << from->username()
+            << "is not the receiver of" << fileId;
+
+        resp["code"] = ERR_FILE_NOT_FOUND;
+        from->sendPacket(MSG_FILE_PULL_RESP, resp);
+        return;
+    }
+
+    QFile* f = new QFile(fileDir() + "/" + fileId);
+    if (!f->open(QIODevice::ReadOnly)) {
+        delete f;
+        // 数据库里有记录但文件没了：被手动删了，或者清理任务刚跑过
+        qDebug() << "file missing on disk:" << fileId;
+
+        resp["code"] = ERR_FILE_NOT_FOUND;
+        from->sendPacket(MSG_FILE_PULL_RESP, resp);
+        return;
+    }
+
+    Download dl;
+    dl.file = f;
+    dl.to = from;
+    dl.fileName = info.fileName;
+    dl.fileSize = info.fileSize;
+    downloads.insert(fileId, dl);
+
+    resp["code"] = ERR_OK;
+    resp["fileName"] = info.fileName;
+    resp["fileSize"] = info.fileSize;
+    from->sendPacket(MSG_FILE_PULL_RESP, resp);
+
+    qDebug() << "file pull begin:" << info.fileName << info.fileSize
+        << "bytes ->" << from->username();
+
+    sendFileChunks(fileId);
+}
+
+void Server::sendFileChunks(const QString& fileId)
+{
+    auto it = downloads.find(fileId);
+    if (it == downloads.end())
+        return;
+
+    Download& dl = it.value();
+
+    // 只在待发缓冲不太满的时候才读下一块，剩下的等 bytesWritten 再来
+    while (dl.to->pendingBytes() < kMaxPending) {
+        QByteArray chunk = dl.file->read(FILE_CHUNK_SIZE);
+
+        if (chunk.isEmpty())
+            break;
+
+        QJsonObject obj;
+        obj["fileId"] = fileId;
+        obj["seq"] = dl.seq++;
+        obj["data"] = QString::fromLatin1(chunk.toBase64());
+
+        dl.to->sendPacket(MSG_FILE_PULL_CHUNK, obj);
+        dl.sent += chunk.size();
+    }
+
+    if (dl.sent < dl.fileSize)
+        return;      // 还没读完，等下一次 bytesWritten
+
+    QJsonObject end;
+    end["fileId"] = fileId;
+    dl.to->sendPacket(MSG_FILE_PULL_END, end);
+
+    qDebug() << "file sent:" << dl.fileName << dl.sent << "bytes ->"
+        << dl.to->username();
+
+    dl.file->close();
+    delete dl.file;
+    downloads.erase(it);
+}
+
+void Server::abortDownload(const QString& fileId)
+{
+    auto it = downloads.find(fileId);
+    if (it == downloads.end())
+        return;
+
+    Download dl = it.value();
+    downloads.erase(it);
+
+    dl.file->close();
+    delete dl.file;
+
+    // 取消下载只是不发了，服务端那份文件要留着 ——
+    // 用户随时可能再点一次下载
+    qDebug() << "download aborted:" << fileId << dl.fileName;
+}
+
+void Server::onSessionBytesWritten(ClientSession* session)
+{
+    // 这条连接上正在下发的那个，接着推下一块
+    const QStringList ids = downloads.keys();
+    for (const QString& id : ids) {
+        if (downloads.value(id).to == session)
+            sendFileChunks(id);
+    }
+}
+
+// ---------- 文件清理 ----------
+
+void Server::onCleanTimer()
+{
+    cleanExpiredFiles();
+}
+
+void Server::cleanExpiredFiles()
+{
+    QList<FileInfo> expired;
+    if (!db->getExpiredFiles(FILE_KEEP_DAYS, expired))
+        return;
+
+    int removed = 0;
+
+    for (const FileInfo& info : expired) {
+        // 正在传的绝对不能删 —— 句柄还开着，
+        // 底下的文件被抽走会出各种莫名其妙的问题
+        if (uploads.contains(info.fileId) || downloads.contains(info.fileId))
+            continue;
+
+        QFile::remove(fileDir() + "/" + info.fileId);
+        db->deleteFile(info.fileId);
+        ++removed;
+    }
+
+    if (removed > 0)
+        qDebug() << "expired files cleaned:" << removed
+        << "( older than" << FILE_KEEP_DAYS << "days )";
+
+    cleanOrphanFiles();
+}
+
+void Server::cleanOrphanFiles()
+{
+    // 磁盘上有、数据库里却没有记录的文件。服务端异常退出、
+    // 或者数据库写失败时会留下这种东西，不清的话它们永远躺在那儿，
+    // 谁也不知道是什么、也没人敢删
+    QStringList known;
+    if (!db->getAllFileIds(known))
+        return;
+
+    QDir dir(fileDir());
+    const QStringList names = dir.entryList(QDir::Files);
+
+    int removed = 0;
+
+    for (const QString& name : names) {
+        if (known.contains(name))
+            continue;
+
+        // 刚 open 出来、还没写进数据库的那一瞬间，跳过
+        if (uploads.contains(name) || downloads.contains(name))
+            continue;
+
+        if (dir.remove(name))
+            ++removed;
+    }
+
+    if (removed > 0)
+        qDebug() << "orphan files cleaned:" << removed;
 }

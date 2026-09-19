@@ -62,6 +62,8 @@ add_executable(SCat-Client
      "Chat/src/ChatStorage.cpp"
      "Chat/include/FileTransfer.h"
      "Chat/src/FileTransfer.cpp"
+     "Chat/include/FileBubble.h"
+     "Chat/src/FileBubble.cpp"
       "Scat/include/ScatWindow.h"                                              
       "Scat/src/ScatWindow.cpp"
       "Other/include/ImageUtils.h"

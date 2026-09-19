@@ -30,6 +30,8 @@ public:
     void updateFriendStatus(const QString& username, bool online);
     void loadHistory(const QList<ChatMessage>& list);
     void addChatMessage(const ChatMessage& msg);
+    void updateFileProgress(const QString& msgid, qint64 done, qint64 total);
+    void updateFileState(const QString& msgid, int state,const QString& filePath = QString());
     void setRequestCount(int count);    
     void setSettingsInfo(const QString& username, const QString& nickname,const QString& avatar);
     void setStoragePath(const QString& path);
@@ -52,6 +54,10 @@ signals:
     void sendTextMessage(const QString& friendId, const QString& msg);
     void sendImage(const QString& friendId, const QImage& image);
     void sendFileClicked(const QString& friendId);
+    void fileCancelClicked(const QString& msgid);
+    void fileRetryClicked(const QString& msgid, const QString& to,const QString& filePath);
+    void fileOpenClicked(const QString& msgid, const QString& filePath);
+    void fileDownloadClicked(const QString& msgid);
     void sendMoodClicked(const QString& friendId);
 
     void sendNotifyClicked();

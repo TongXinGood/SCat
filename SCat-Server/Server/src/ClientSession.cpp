@@ -12,7 +12,15 @@ ClientSession::ClientSession(QTcpSocket* sock, QObject* parent)
         this, &ClientSession::onReadyRead);
     connect(socket, &QTcpSocket::disconnected,
         this, &ClientSession::onDisconnected);
+    connect(socket, &QTcpSocket::bytesWritten,
+        this, [this](qint64) { emit bytesWritten(this); });
 }
+
+qint64 ClientSession::pendingBytes() const
+{
+    return socket->bytesToWrite();
+}
+
 void ClientSession::setUser(const QString& name)
 {
     userName = name;

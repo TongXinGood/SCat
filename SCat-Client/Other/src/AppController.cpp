@@ -13,6 +13,10 @@
 #include <QUuid>
 #include <QDateTime>
 #include <QDebug>
+#include <QFileInfo>
+#include <QDir>
+#include <QDesktopServices>
+#include <QUrl>
 
 AppController::AppController(QObject* parent)
     : QObject(parent)
@@ -63,6 +67,8 @@ AppController::AppController(QObject* parent)
     connect(fileTransfer, &FileTransfer::progress, this, &AppController::onFileProgress);
     connect(fileTransfer, &FileTransfer::finished, this, &AppController::onFileFinished);
     connect(fileTransfer, &FileTransfer::failed, this, &AppController::onFileFailed);
+    connect(fileTransfer, &FileTransfer::canceled, this, &AppController::onFileCanceled);
+    connect(fileTransfer, &FileTransfer::downloaded, this, &AppController::onFileDownloaded);
     connect(settingsMgr, &SettingsManager::nicknameSaved, this, &AppController::onNicknameSaved);
     connect(settingsMgr, &SettingsManager::avatarUploaded, this, &AppController::onAvatarUploaded);
     connect(settingsMgr, &SettingsManager::avatarDownloaded, this, &AppController::onAvatarDownloaded);
@@ -157,6 +163,12 @@ void AppController::onLoginSuccess(const QJsonObject& info)
     if (!storage->open(username)) {
         qDebug() << "chat storage open failed, history will not be saved";
     }
+
+    int parts = AppPath::cleanPartFiles(username);
+    if (parts > 0)
+        qDebug() << "leftover .part files cleaned:" << parts;
+
+
     scatWin = new ScatWindow;
     scatWin->setUserInfo(nickname, avatar);
     scatWin->setSettingsInfo(username, nickname, avatar);
@@ -165,6 +177,10 @@ void AppController::onLoginSuccess(const QJsonObject& info)
     connect(scatWin, &ScatWindow::sendTextMessage, this, &AppController::onSendTextMessage);
     connect(scatWin, &ScatWindow::sendFileClicked, this, &AppController::onSendFileClicked);
     connect(scatWin, &ScatWindow::sendImage, this, &AppController::onImagePasted);
+    connect(scatWin, &ScatWindow::fileCancelClicked, this, &AppController::onFileCancelClicked);
+    connect(scatWin, &ScatWindow::fileRetryClicked, this, &AppController::onFileRetryClicked);
+    connect(scatWin, &ScatWindow::fileOpenClicked, this, &AppController::onFileOpenClicked);
+    connect(scatWin, &ScatWindow::fileDownloadClicked, this, &AppController::onFileDownloadClicked);
     connect(scatWin, &ScatWindow::requestHistory, this, &AppController::onRequestHistory);
     connect(scatWin, &ScatWindow::sendAddFriendClicked, this, &AppController::showAddFriendWindow);
     connect(scatWin, &ScatWindow::sendNotifyClicked, this, &AppController::onNotifyClicked);
@@ -305,9 +321,29 @@ void AppController::onSendFileClicked(const QString& to)
         return;      // 用户取消了
 
     if (!ImageUtils::isImageFile(file)) {
-        // 第 3 步再产生消息和气泡，这一步先把上传链路本身跑通
-        fileTransfer->addUpload(QUuid::createUuid().toString(QUuid::WithoutBraces),
-            to, file);
+        QFileInfo info(file);
+
+        // 先产生一条本地消息立刻上屏（带进度条），再把任务排进上传队列。
+        // taskId 直接用 msgid —— 进度和结果回来时就能直接对上是哪一条。
+        //
+        // 这里的 msgid 是本地生成的，跟服务端后来给接收方的那个不一样。
+        // 没关系，msgid 只用于本地定位和去重，两边各认各的
+        ChatMessage msg;
+        msg.msgid = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        msg.from = UserSession::GetInstance().username();
+        msg.to = to;
+        msg.content = "[文件]";
+        msg.time = QDateTime::currentMSecsSinceEpoch();
+        msg.isSelf = true;
+        msg.kind = KIND_FILE;
+        msg.fileName = info.fileName();
+        msg.fileSize = info.size();
+        msg.filePath = file;
+        msg.fileState = FILE_STATE_SENDING;
+
+        onMessageSent(msg);      // 存库 + 上屏，跟文本消息同一条路
+
+        fileTransfer->addUpload(msg.msgid, to, file);
         return;
     }
 
@@ -322,33 +358,82 @@ void AppController::onSendFileClicked(const QString& to)
     sendImage(to, image);
 }
 
-// ---------- 文件传输（第 3 步接上气泡，现在只打日志） ----------
+// ---------- 文件传输 ----------
 
 void AppController::onFileProgress(const QString& taskId, qint64 done, qint64 total)
 {
-    Q_UNUSED(taskId);
-
-    // 每块都打太吵，只在整 10% 的时候打一行
-    static int lastPercent = -1;
-    int percent = total > 0 ? int(done * 100 / total) : 0;
-
-    if (percent / 10 != lastPercent / 10) {
-        lastPercent = percent;
-        qDebug() << "upload progress:" << percent << "%" << done << "/" << total;
-    }
+    if (scatWin)
+        scatWin->updateFileProgress(taskId, done, total);
 }
 
 void AppController::onFileFinished(const QString& taskId, const QString& fileId)
 {
-    Q_UNUSED(taskId);
+    // 存库的同时把服务端给的 fileId 记下来 —— 接收方要靠它下载
+    storage->updateFileState(taskId, FILE_STATE_SENT, fileId);
+
+    if (scatWin)
+        scatWin->updateFileState(taskId, FILE_STATE_SENT);
+
     qDebug() << "upload done, fileId =" << fileId;
 }
 
 void AppController::onFileFailed(const QString& taskId, const QString& reason)
 {
-    Q_UNUSED(taskId);
+    storage->updateFileState(taskId, FILE_STATE_FAILED);
+
+    if (scatWin)
+        scatWin->updateFileState(taskId, FILE_STATE_FAILED);
+
+    // 不弹框了 —— 气泡上已经写着"发送失败"还带重试按钮，
+    // 再弹一个对话框挡在中间很烦
     qDebug() << "upload failed:" << reason;
-    QMessageBox::warning(scatWin, "发送失败", reason);
+}
+
+void AppController::onFileCanceled(const QString& taskId)
+{
+    ChatMessage msg;
+    int state = FILE_STATE_CANCELED;
+
+    if (storage->messageById(taskId, msg) && !msg.isSelf)
+        state = FILE_STATE_READY;
+
+    storage->updateFileState(taskId, state);
+
+    if (scatWin)
+        scatWin->updateFileState(taskId, state);
+}
+
+void AppController::onFileCancelClicked(const QString& msgid)
+{
+    fileTransfer->cancel(msgid);
+}
+
+void AppController::onFileRetryClicked(const QString& msgid, const QString& to,
+    const QString& filePath)
+{
+    // 先把状态扳回"发送中"，用户点了就得立刻看到反应。
+    // 万一源文件已经没了，addUpload 会马上 emit failed 再把它打回失败态
+    storage->updateFileState(msgid, FILE_STATE_SENDING);
+
+    if (scatWin)
+        scatWin->updateFileState(msgid, FILE_STATE_SENDING);
+
+    fileTransfer->addUpload(msgid, to, filePath);
+}
+
+void AppController::onFileOpenClicked(const QString& msgid, const QString& filePath)
+{
+    Q_UNUSED(msgid);
+
+    QFileInfo info(filePath);
+    if (!info.exists()) {
+        QMessageBox::warning(scatWin, "打不开", "这个文件已经不在原来的位置了");
+        return;
+    }
+
+    // 打开文件所在的文件夹，不是直接运行文件 ——
+    // 直接运行一个别人发来的 exe 是很糟糕的默认行为
+    QDesktopServices::openUrl(QUrl::fromLocalFile(info.absolutePath()));
 }
 
 void AppController::onImagePasted(const QString& to, const QImage& image)
@@ -638,4 +723,36 @@ void AppController::onTrayActivated()
     scatWin->showNormal();
     scatWin->raise();
     scatWin->activateWindow();
+}
+
+void AppController::onFileDownloadClicked(const QString& msgid)
+{
+    // fileId 和文件大小都在库里，不用一路从气泡传上来
+    ChatMessage msg;
+    if (!storage->messageById(msgid, msg) || msg.fileId.isEmpty()) {
+        QMessageBox::warning(scatWin, "下载失败", "找不到这个文件的信息");
+        return;
+    }
+
+    QString dir = AppPath::fileDir(UserSession::GetInstance().username());
+
+    // 先把状态扳成"下载中"，用户点了就得立刻看到反应
+    storage->updateFileState(msgid, FILE_STATE_DOWNLOADING);
+
+    if (scatWin)
+        scatWin->updateFileState(msgid, FILE_STATE_DOWNLOADING);
+
+    fileTransfer->addDownload(msgid, msg.fileId, msg.fileName, msg.fileSize, dir);
+}
+
+void AppController::onFileDownloaded(const QString& taskId, const QString& filePath)
+{
+    // 路径要存起来 —— 下次重启之后"打开"按钮还得知道文件在哪
+    storage->updateFilePath(taskId, filePath);
+    storage->updateFileState(taskId, FILE_STATE_DONE);
+
+    if (scatWin)
+        scatWin->updateFileState(taskId, FILE_STATE_DONE, filePath);
+
+    qDebug() << "download done:" << filePath;
 }

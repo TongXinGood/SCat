@@ -19,9 +19,12 @@ public:
     void setUser(const QString& name);
     bool isLogined() const { return !userName.isEmpty(); }
     QString username() const { return userName; }
+
+    qint64 pendingBytes() const;
 signals:
     void packetReceived(ClientSession* from, quint16 type, const QJsonObject& obj);
     void closed(ClientSession* self);
+    void bytesWritten(ClientSession* self);
 
 private slots:
     void onReadyRead();

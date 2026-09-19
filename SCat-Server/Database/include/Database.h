@@ -7,6 +7,7 @@
 #include <QSqlError>
 #include <QVariant>
 #include <QList>
+#include <QStringList>
 #include <QDebug>
 #include "../../Protocol.h"
 
@@ -15,6 +16,17 @@ struct FriendInfo
     QString username;
     QString nickname;
     QString avatar;
+};
+
+// file_store 表里的一条记录
+struct FileInfo
+{
+    QString fileId;
+    QString sender;
+    QString receiver;
+    QString fileName;
+    qint64  fileSize = 0;
+    bool    finished = false;    // 传完整了没有，没传完不许下载
 };
 
 // 一条暂存的离线消息
@@ -30,6 +42,10 @@ struct OfflineMsg
     QString image;          // base64。服务端不解码，收什么存什么、原样发回去
     int     imgW = 0;
     int     imgH = 0;
+
+    QString fileId;
+    QString fileName;
+    qint64  fileSize = 0;
 };
 
 class Database : public QObject
@@ -58,6 +74,11 @@ public:
     // 文件暂存
     bool addFile(const QString& fileId, const QString& sender, const QString& receiver,const QString& fileName, qint64 fileSize);
     bool finishFile(const QString& fileId);      // 收完整了，置 finished=1
+    bool getFile(const QString& fileId, FileInfo& out);
+    // 超过 days 天的文件记录，定时清理用
+    bool getExpiredFiles(int days, QList<FileInfo>& list);
+    // 所有还在册的 file_id。用来找出磁盘上那些"数据库里没有"的孤儿文件
+    bool getAllFileIds(QStringList& out);
     bool deleteFile(const QString& fileId);      // 传坏了 / 取消了，把记录抹掉
 
     // 离线消息

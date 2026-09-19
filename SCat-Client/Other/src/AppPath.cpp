@@ -164,4 +164,20 @@ namespace AppPath
     {
         return fileDir(user) + "/" + fileName;
     }
+    int cleanPartFiles(const QString& user)
+    {
+        QDir dir(fileDir(user));
+        if (!dir.exists())
+            return 0;
+
+        const QStringList parts = dir.entryList(QStringList() << "*.part", QDir::Files);
+
+        int removed = 0;
+        for (const QString& name : parts) {
+            if (dir.remove(name))
+                ++removed;
+        }
+
+        return removed;
+    }
 }

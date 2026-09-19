@@ -27,31 +27,45 @@ public:
     // 排进上传队列。taskId 由调用方生成，用来对应界面上的那个气泡
     void addUpload(const QString& taskId, const QString& to, const QString& filePath);
     void cancel(const QString& taskId);
+    void addDownload(const QString& taskId, const QString& fileId,const QString& fileName, qint64 fileSize, const QString& saveDir);
 
 signals:
     void progress(const QString& taskId, qint64 done, qint64 total);
     void finished(const QString& taskId, const QString& fileId);
+    void downloaded(const QString& taskId, const QString& filePath);
     void failed(const QString& taskId, const QString& reason);
+    void canceled(const QString& taskId);
 
 private slots:
     void onPacketReceived(quint16 type, const QJsonObject& obj);
     void onBytesWritten();
+    void onDisconnected();
 
 private:
-    void startNext();                          // 队列里还有就开下一个
+    void startNext();                           // 队列里还有就开下一个
+    void startUpload();
+    void startDownload();
     void sendChunks();                         // 能塞多少塞多少，塞不下就等
+
+    void onPullChunk(const QJsonObject& obj);  // 收到一块，写盘
+    void onPullEnd(const QJsonObject& obj);    // 下完了，核对大小 + 改名
+
     void finishCurrent(const QString& id);
     void failCurrent(const QString& reason);
     void closeCurrent();
+    void discardPart();                        // 把没下完的 .part 删掉
 
 private:
     struct Task
     {
+        bool    isUpload = true;
         QString taskId;
-        QString to;
-        QString filePath;
+        QString to;          // 上传：发给谁
+        QString filePath;    // 上传：源文件路径；下载：最终要存成的路径
         QString fileName;
         qint64  fileSize = 0;
+        QString fileId;      // 下载：服务端那边的文件 id
+        QString saveDir;     // 下载：存到哪个目录
     };
 
     NetWorkManager* net;

@@ -39,6 +39,9 @@ private:
     void handleChatPush(const QJsonObject& obj);
     void handleOfflinePush(const QJsonObject& obj);
     void fillImage(ChatMessage& msg, const QJsonObject& obj);
+    // 文件消息的公共解析。只填元信息，不下载 ——
+    // 500MB 自动下太狠了，要等用户点那个"下载"
+    void fillFile(ChatMessage& msg, const QJsonObject& obj);
 private:
     // 图片发出去之后，等回执时要知道这张图存在本地哪个文件里。
     // imgName 纯粹是本地信息，没必要塞进协议让服务端转一圈，

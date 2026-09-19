@@ -185,8 +185,9 @@ bool Database::addOfflineMsg(const OfflineMsg& msg)
 {
     QSqlQuery q(db);
     q.prepare("INSERT INTO offline_msg "
-        "(msgid, sender, receiver, content, send_time, kind, image, img_w, img_h) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        "(msgid, sender, receiver, content, send_time, kind, image, img_w, img_h, "
+        "file_id, file_name, file_size) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     q.addBindValue(msg.msgid);
     q.addBindValue(msg.sender);
     q.addBindValue(msg.receiver);
@@ -196,6 +197,9 @@ bool Database::addOfflineMsg(const OfflineMsg& msg)
     q.addBindValue(msg.image);
     q.addBindValue(msg.imgW);
     q.addBindValue(msg.imgH);
+    q.addBindValue(msg.fileId);      
+    q.addBindValue(msg.fileName);    
+    q.addBindValue(msg.fileSize);
 
     if (!q.exec()) {
         qDebug() << "addOfflineMsg failed:" << q.lastError().text();
@@ -211,7 +215,7 @@ bool Database::getOfflineMsgs(const QString& receiver, QList<OfflineMsg>& list, 
     QSqlQuery q(db);
     // 按 id 正序取，保证补发的顺序跟当初发送的顺序一致
     q.prepare("SELECT msgid, sender, receiver, content, send_time, "
-        "kind, image, img_w, img_h "
+        "kind, image, img_w, img_h, file_id, file_name, file_size "
         "FROM offline_msg WHERE receiver = ? ORDER BY id ASC LIMIT ?");
     q.addBindValue(receiver);
     q.addBindValue(limit);
@@ -232,6 +236,9 @@ bool Database::getOfflineMsgs(const QString& receiver, QList<OfflineMsg>& list, 
         m.image = q.value(6).toString();
         m.imgW = q.value(7).toInt();
         m.imgH = q.value(8).toInt();
+        m.fileId = q.value(9).toString();       
+        m.fileName = q.value(10).toString();     
+        m.fileSize = q.value(11).toLongLong();   
         list.append(m);
     }
 
@@ -429,5 +436,79 @@ bool Database::setAvatar(const QString& username, const QString& avatar)
         qDebug() << "setAvatar failed:" << q.lastError().text();
         return false;
     }
+    return true;
+}
+
+bool Database::getFile(const QString& fileId, FileInfo& out)
+{
+    QSqlQuery q(db);
+    q.prepare("SELECT file_id, sender, receiver, file_name, file_size, finished "
+        "FROM file_store WHERE file_id = ?");
+    q.addBindValue(fileId);
+
+    if (!q.exec()) {
+        qDebug() << "getFile failed:" << q.lastError().text();
+        return false;
+    }
+
+    if (!q.next())
+        return false;      // 没这个文件，不算错误
+
+    out.fileId = q.value(0).toString();
+    out.sender = q.value(1).toString();
+    out.receiver = q.value(2).toString();
+    out.fileName = q.value(3).toString();
+    out.fileSize = q.value(4).toLongLong();
+    out.finished = q.value(5).toInt() != 0;
+
+    return true;
+}
+
+bool Database::getExpiredFiles(int days, QList<FileInfo>& list)
+{
+    list.clear();
+
+    QSqlQuery q(db);
+
+    // days 是我们自己的常量（FILE_KEEP_DAYS），不是用户输进来的，
+    // 直接拼进语句没有注入风险。INTERVAL 后面的值不是所有驱动都支持
+    // 用占位符绑定，拼字符串反而最稳
+    QString sql = QString(
+        "SELECT file_id, sender, receiver, file_name, file_size, finished "
+        "FROM file_store WHERE created_at < DATE_SUB(NOW(), INTERVAL %1 DAY)")
+        .arg(days);
+
+    if (!q.exec(sql)) {
+        qDebug() << "getExpiredFiles failed:" << q.lastError().text();
+        return false;
+    }
+
+    while (q.next()) {
+        FileInfo info;
+        info.fileId = q.value(0).toString();
+        info.sender = q.value(1).toString();
+        info.receiver = q.value(2).toString();
+        info.fileName = q.value(3).toString();
+        info.fileSize = q.value(4).toLongLong();
+        info.finished = q.value(5).toInt() != 0;
+        list.append(info);
+    }
+
+    return true;
+}
+
+bool Database::getAllFileIds(QStringList& out)
+{
+    out.clear();
+
+    QSqlQuery q(db);
+    if (!q.exec("SELECT file_id FROM file_store")) {
+        qDebug() << "getAllFileIds failed:" << q.lastError().text();
+        return false;
+    }
+
+    while (q.next())
+        out << q.value(0).toString();
+
     return true;
 }
