@@ -8,8 +8,10 @@
 #include <QPushButton>
 #include <QTextEdit> 
 #include <QListWidget>
-#include <QKeyEvent> 
+#include <QKeyEvent>
+#include <QImage>
 #include "ChatMessage.h"
+#include "ChatInputEdit.h"
 
 class ChatWindow : public QWidget
 {
@@ -30,6 +32,7 @@ public:
 signals:
     void sendTextMsg(const QString& msg);
     void sendFileClicked();
+    void sendImage(const QImage& image);
     void sendMoodClicked(); // 新增：点击表情按钮的信号
 
 protected:
@@ -45,8 +48,10 @@ private:
     void initHeader();
     void initMsgList();
     void initInput();
+    void addBubble(const ChatMessage& msg);
 
     QWidget* createBubbleWidget(const QString& text, bool isSelf);
+    QWidget* createImageBubbleWidget(const ChatMessage& msg);
     QWidget* createFileBubbleWidget(const QString& fileName, const QString& fileSize, bool isSelf);
 
 private:
@@ -61,7 +66,7 @@ private:
 
     QWidget* inputContainer;
     QPushButton* btnmood; // 改为 QPushButton
-    QTextEdit* msgEdit;
+    ChatInputEdit* msgEdit;
     QPushButton* btnFile;
 };
 

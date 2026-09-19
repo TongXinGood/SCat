@@ -23,11 +23,14 @@ public:
 	bool isConnected() const;
 
     void sendPacket(quint16 type, const QJsonObject& obj);
+
+    qint64 pendingBytes() const;
 signals:
     void connected();
     void disconnected();
     void errorOccurred(const QString& msg);
     void packetReceived(quint16 type, const QJsonObject& obj);
+    void bytesWritten(qint64 bytes);
 
 private slots:
     void onConnected();

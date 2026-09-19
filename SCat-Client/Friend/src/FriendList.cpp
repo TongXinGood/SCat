@@ -57,7 +57,7 @@ void FriendList::initUI()
     btnAdd->setFixedSize(24, 24);
     btnAdd->setCursor(Qt::PointingHandCursor);
     btnAdd->setIcon(QIcon(":/Resource/icon/add.png"));
-    btnAdd->setIconSize(QSize(15, 15));
+    btnAdd->setIconSize(QSize(17, 17));
     btnAdd->setStyleSheet(
         "QPushButton { "
         "   border: none; "

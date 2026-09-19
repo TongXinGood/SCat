@@ -37,6 +37,7 @@ public:
 
 private:
     bool createTables();
+    bool migrateTables();  // 老版本建的库补齐新列
 
 private:
     QString owner;         // 当前登录的账号

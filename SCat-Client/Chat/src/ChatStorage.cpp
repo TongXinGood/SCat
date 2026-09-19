@@ -6,6 +6,8 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QVariant>
+#include <QMap>
+#include <QStringList>
 #include <QDebug>
 
 ChatStorage::ChatStorage(QObject* parent)
@@ -42,6 +44,9 @@ bool ChatStorage::open(const QString& user)
     QSqlQuery(db).exec("PRAGMA journal_mode=WAL");
 
     if (!createTables())
+        return false;
+
+    if (!migrateTables())
         return false;
 
     owner = user;
@@ -82,7 +87,16 @@ bool ChatStorage::createTables()
         "receiver TEXT    NOT NULL,"
         "content  TEXT    NOT NULL,"
         "time     INTEGER NOT NULL,"
-        "is_self  INTEGER NOT NULL)")) {
+        "is_self  INTEGER NOT NULL,"
+        "kind     INTEGER NOT NULL DEFAULT 0,"
+        "img_name TEXT,"
+        "img_w    INTEGER NOT NULL DEFAULT 0,"
+        "img_h    INTEGER NOT NULL DEFAULT 0,"
+        "file_id   TEXT,"
+        "file_name TEXT,"
+        "file_size INTEGER NOT NULL DEFAULT 0,"
+        "file_path TEXT,"
+        "file_state INTEGER NOT NULL DEFAULT 0)")) {
         qDebug() << "create table failed:" << q.lastError().text();
         return false;
     }
@@ -91,6 +105,51 @@ bool ChatStorage::createTables()
     if (!q.exec("CREATE INDEX IF NOT EXISTS idx_peer_time ON messages(peer, time)")) {
         qDebug() << "create index failed:" << q.lastError().text();
         return false;
+    }
+
+    return true;
+}
+
+bool ChatStorage::migrateTables()
+{
+    QSqlQuery q(db);
+
+    // 先查现在表里到底有哪些列。SQLite 没有 "ADD COLUMN IF NOT EXISTS"，
+    // 重复加同名列会直接报错，所以只能自己比对
+    if (!q.exec("PRAGMA table_info(messages)")) {
+        qDebug() << "read table info failed:" << q.lastError().text();
+        return false;
+    }
+
+    QStringList existing;
+    while (q.next())
+        existing << q.value(1).toString();      // 结果集第 1 列就是列名
+
+    // 列名 -> 建列语句。以后再加新列，往这里补一行就行，
+    // 老库新库都能自动对齐
+    QMap<QString, QString> columns;
+    columns["kind"] = "kind INTEGER NOT NULL DEFAULT 0";
+    columns["img_name"] = "img_name TEXT";
+    columns["img_w"] = "img_w INTEGER NOT NULL DEFAULT 0";
+    columns["img_h"] = "img_h INTEGER NOT NULL DEFAULT 0";
+    columns["file_id"] = "file_id TEXT";
+    columns["file_name"] = "file_name TEXT";
+    columns["file_size"] = "file_size INTEGER NOT NULL DEFAULT 0";
+    columns["file_path"] = "file_path TEXT";
+    columns["file_state"] = "file_state INTEGER NOT NULL DEFAULT 0";
+
+    for (auto it = columns.constBegin(); it != columns.constEnd(); ++it) {
+        if (existing.contains(it.key()))
+            continue;
+
+        // SQLite 的 ADD COLUMN 只改表结构不动数据，几万条记录也是瞬间完成
+        if (!q.exec("ALTER TABLE messages ADD COLUMN " + it.value())) {
+            qDebug() << "add column failed:" << it.key()
+                << q.lastError().text();
+            return false;
+        }
+
+        qDebug() << "messages table migrated, column added:" << it.key();
     }
 
     return true;
@@ -106,8 +165,10 @@ void ChatStorage::addMessage(const ChatMessage& msg)
     // OR IGNORE：msgid 上有 UNIQUE 约束，重复的消息插不进去会被静默跳过。
     // 第 5 步离线消息重复投递时，去重全靠这一句
     q.prepare("INSERT OR IGNORE INTO messages "
-        "(msgid, peer, sender, receiver, content, time, is_self) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)");
+        "(msgid, peer, sender, receiver, content, time, is_self, "
+        "kind, img_name, img_w, img_h, "
+        "file_id, file_name, file_size, file_path, file_state) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     q.addBindValue(msg.msgid);
     q.addBindValue(msg.peer());
     q.addBindValue(msg.from);
@@ -115,6 +176,15 @@ void ChatStorage::addMessage(const ChatMessage& msg)
     q.addBindValue(msg.content);
     q.addBindValue(msg.time);
     q.addBindValue(msg.isSelf ? 1 : 0);
+    q.addBindValue(msg.kind);
+    q.addBindValue(msg.imgName);
+    q.addBindValue(msg.imgW);
+    q.addBindValue(msg.imgH);
+    q.addBindValue(msg.fileId);
+    q.addBindValue(msg.fileName);
+    q.addBindValue(msg.fileSize);
+    q.addBindValue(msg.filePath);
+    q.addBindValue(msg.fileState);
 
     if (!q.exec())
         qDebug() << "addMessage failed:" << q.lastError().text();
@@ -130,7 +200,9 @@ QList<ChatMessage> ChatStorage::loadHistory(const QString& peer, int limit) cons
 
     // 先倒序取最近的 limit 条。如果写成正序 LIMIT，
     // 拿到的是最老的那几条，不是我们要的
-    q.prepare("SELECT msgid, sender, receiver, content, time, is_self "
+    q.prepare("SELECT msgid, sender, receiver, content, time, is_self, "
+        "kind, img_name, img_w, img_h, "
+        "file_id, file_name, file_size, file_path, file_state "
         "FROM messages WHERE peer = ? "
         "ORDER BY time DESC, id DESC LIMIT ?");
     q.addBindValue(peer);
@@ -149,6 +221,15 @@ QList<ChatMessage> ChatStorage::loadHistory(const QString& peer, int limit) cons
         msg.content = q.value(3).toString();
         msg.time = q.value(4).toLongLong();
         msg.isSelf = q.value(5).toInt() != 0;
+        msg.kind = q.value(6).toInt();
+        msg.imgName = q.value(7).toString();
+        msg.imgW = q.value(8).toInt();
+        msg.imgH = q.value(9).toInt();
+        msg.fileId = q.value(10).toString();
+        msg.fileName = q.value(11).toString();
+        msg.fileSize = q.value(12).toLongLong();
+        msg.filePath = q.value(13).toString();
+        msg.fileState = q.value(14).toInt();
 
         // 倒着查出来的，往前插正好还原成时间正序
         list.prepend(msg);
@@ -163,7 +244,9 @@ bool ChatStorage::lastMessage(const QString& peer, ChatMessage& out) const
         return false;
 
     QSqlQuery q(db);
-    q.prepare("SELECT msgid, sender, receiver, content, time, is_self "
+    q.prepare("SELECT msgid, sender, receiver, content, time, is_self, "
+        "kind, img_name, img_w, img_h, "
+        "file_id, file_name, file_size, file_path, file_state "
         "FROM messages WHERE peer = ? "
         "ORDER BY time DESC, id DESC LIMIT 1");
     q.addBindValue(peer);
@@ -177,7 +260,15 @@ bool ChatStorage::lastMessage(const QString& peer, ChatMessage& out) const
     out.content = q.value(3).toString();
     out.time = q.value(4).toLongLong();
     out.isSelf = q.value(5).toInt() != 0;
-
+    out.kind = q.value(6).toInt();
+    out.imgName = q.value(7).toString();
+    out.imgW = q.value(8).toInt();
+    out.imgH = q.value(9).toInt();
+    out.fileId = q.value(10).toString();
+    out.fileName = q.value(11).toString();
+    out.fileSize = q.value(12).toLongLong();
+    out.filePath = q.value(13).toString();
+    out.fileState = q.value(14).toInt();
     return true;
 }
 

@@ -16,6 +16,13 @@ static QString avatarDir()
     return dir;
 }
 
+static QString fileDir()
+{
+    QString dir = QCoreApplication::applicationDirPath() + "/files";
+    QDir().mkpath(dir);
+    return dir;
+}
+
 void Server::onNewConnection()
 {
     while (server->hasPendingConnections()) {
@@ -36,7 +43,8 @@ void Server::onNewConnection()
 
 void Server::onPacketReceived(ClientSession* from, quint16 type, const QJsonObject& obj)
 {
-    qDebug() << "recv from" << from->peerInfo() << "type" << type;
+    if (type != MSG_FILE_CHUNK)
+        qDebug() << "recv from" << from->peerInfo() << "type" << type;
 
     switch (type) {
     case MSG_HEARTBEAT:
@@ -91,6 +99,22 @@ void Server::onPacketReceived(ClientSession* from, quint16 type, const QJsonObje
         handleGetAvatar(from, obj);
         break;
 
+    case MSG_FILE_BEGIN_REQ:
+        handleFileBegin(from, obj);
+        break;
+
+    case MSG_FILE_CHUNK:
+        handleFileChunk(from, obj);
+        break;
+
+    case MSG_FILE_END_REQ:
+        handleFileEnd(from, obj);
+        break;
+
+    case MSG_FILE_CANCEL:
+        handleFileCancel(from, obj);
+        break;
+
     default:
         qDebug() << "unknown type:" << type;
         break;
@@ -99,6 +123,14 @@ void Server::onPacketReceived(ClientSession* from, quint16 type, const QJsonObje
 
 void Server::onSessionClosed(ClientSession* session)
 {
+    // 这条连接上没传完的上传全都作废。不清的话文件句柄一直开着，
+    // 半截文件也会一直躺在盘上占地方
+    const QStringList ids = uploads.keys();
+    for (const QString& id : ids) {
+        if (uploads.value(id).from == session)
+            abortUpload(id);
+    }
+
     if (session->isLogined()) {
         // 只有在线表里记的确实是这条连接时才移除。
         // 防止以后改成"顶号"策略时，旧连接断开把新连接误删掉。
@@ -305,7 +337,17 @@ void Server::handleChat(ClientSession* from, const QJsonObject& obj)
     QString to = obj["to"].toString();
     QString content = obj["content"].toString();
 
+    int kind = obj["kind"].toInt();
+    QString image = obj["image"].toString();
+
+
     if (to.isEmpty() || content.isEmpty()) {
+        resp["code"] = ERR_INVALID_PARAM;
+        from->sendPacket(MSG_CHAT_RESP, resp);
+        return;
+    }
+
+    if (kind == KIND_IMAGE && image.isEmpty()) {
         resp["code"] = ERR_INVALID_PARAM;
         from->sendPacket(MSG_CHAT_RESP, resp);
         return;
@@ -328,6 +370,15 @@ void Server::handleChat(ClientSession* from, const QJsonObject& obj)
         push["to"] = to;
         push["content"] = content;
         push["time"] = time;
+        push["kind"] = kind;
+
+        // 图片原样透传，服务端不解码也不落盘。
+        // 在线投递完这张图在服务端就不存在了，零存储成本
+        if (kind == KIND_IMAGE) {
+            push["image"] = image;
+            push["w"] = obj["w"].toInt();
+            push["h"] = obj["h"].toInt();
+        }
 
         target->sendPacket(MSG_CHAT_PUSH, push);
 
@@ -335,19 +386,31 @@ void Server::handleChat(ClientSession* from, const QJsonObject& obj)
             << ":" << content.left(20);
     }
     else {
-        // 对方不在线，先存进 offline_msg 表，等他登录时补发
-        if (db->addOfflineMsg(msgid, from->username(), to, content, time))
+        // 对方不在线，先存进 offline_msg 表，等他登录时补发。
+        // 图片也一样躺在表里，客户端确认收到后会被删掉，不会长期占地方
+        OfflineMsg m;
+        m.msgid = msgid;
+        m.sender = from->username();
+        m.receiver = to;
+        m.content = content;
+        m.time = time;
+        m.kind = kind;
+        m.image = image;
+        m.imgW = obj["w"].toInt();
+        m.imgH = obj["h"].toInt();
+
+        if (db->addOfflineMsg(m))
             qDebug() << "chat stored offline:" << from->username() << "->" << to;
         else
             qDebug() << "store offline failed:" << to;
     }
-
     // 回执给发送方，带上服务端时间戳，让它拿去存本地
     resp["code"] = ERR_OK;
     resp["msgid"] = msgid;
     resp["to"] = to;
     resp["content"] = content;
     resp["time"] = time;
+    resp["kind"] = kind;
     resp["delivered"] = (target != nullptr);
 
     from->sendPacket(MSG_CHAT_RESP, resp);
@@ -361,19 +424,41 @@ void Server::sendOfflineMessages(ClientSession* to)
     QList<OfflineMsg> list;
 
     // 一次最多取 100 条。这批被客户端确认、服务端删掉之后，
-    // handleOfflineAck 会再调一次这个函数取下一批，
-    // 所以离线消息攒得再多也不会撑爆单个数据包（上限 1MB）
+    // handleOfflineAck 会再调一次这个函数取下一批
     if (!db->getOfflineMsgs(to->username(), list, 100) || list.isEmpty())
         return;
 
+    // 光靠"一次 100 条"挡不住图片：一条图片 base64 之后有几百 KB，
+    // 100 条堆一个包里早就超过 1MB 的包体上限，客户端收到会直接掐断连接。
+    // 所以这里边装边算字节数，超了就先发这一批，
+    // 剩下的等客户端 ACK 之后 handleOfflineAck 会再调一次本函数继续补发
+    static const int kMaxBatchBytes = 600 * 1024;
+
     QJsonArray arr;
+    int batchBytes = 0;
+
     for (const OfflineMsg& m : list) {
+        // 已经装了东西，再装这条就要超了 —— 留到下一批。
+        // 判断里的 !arr.isEmpty() 是保险：万一单条就超了阈值，
+        // 也得让它单独成一批发出去，否则会卡死在这一条上永远发不完
+        if (!arr.isEmpty() && batchBytes + m.image.size() > kMaxBatchBytes)
+            break;
+
         QJsonObject obj;
         obj["msgid"] = m.msgid;
         obj["from"] = m.sender;
         obj["to"] = m.receiver;
         obj["content"] = m.content;
         obj["time"] = m.time;
+        obj["kind"] = m.kind;
+
+        if (m.kind == KIND_IMAGE) {
+            obj["image"] = m.image;
+            obj["w"] = m.imgW;
+            obj["h"] = m.imgH;
+        }
+
+        batchBytes += m.image.size();
         arr.append(obj);
     }
 
@@ -745,4 +830,169 @@ void Server::handleGetAvatar(ClientSession* from, const QJsonObject& obj)
     from->sendPacket(MSG_GET_AVATAR_RESP, resp);
 
     qDebug() << "avatar sent:" << fileName << data.size() << "bytes";
+}
+
+// ---------- 文件上传 ----------
+
+void Server::handleFileBegin(ClientSession* from, const QJsonObject& obj)
+{
+    QJsonObject resp;
+
+    if (!from->isLogined()) {
+        resp["code"] = ERR_NOT_LOGIN;
+        from->sendPacket(MSG_FILE_BEGIN_RESP, resp);
+        return;
+    }
+
+    QString to = obj["to"].toString();
+    QString fileName = obj["fileName"].toString();
+    qint64 fileSize = obj["fileSize"].toVariant().toLongLong();
+
+    if (to.isEmpty() || fileName.isEmpty() || fileSize <= 0) {
+        resp["code"] = ERR_INVALID_PARAM;
+        from->sendPacket(MSG_FILE_BEGIN_RESP, resp);
+        return;
+    }
+
+    if (fileSize > MAX_FILE_SIZE) {
+        resp["code"] = ERR_FILE_TOO_LARGE;
+        from->sendPacket(MSG_FILE_BEGIN_RESP, resp);
+        return;
+    }
+
+    // 落盘用 fileId 当文件名，原始文件名只进数据库。
+    // 这样路径穿越彻底没戏，不同的人传同名文件也不会互相覆盖
+    QString fileId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    QString path = fileDir() + "/" + fileId;
+
+    QFile* f = new QFile(path);
+    if (!f->open(QIODevice::WriteOnly)) {
+        delete f;
+        qDebug() << "open file for write failed:" << path;
+
+        resp["code"] = ERR_FILE_IO;
+        from->sendPacket(MSG_FILE_BEGIN_RESP, resp);
+        return;
+    }
+
+    Upload up;
+    up.file = f;
+    up.from = from;
+    up.receiver = to;
+    up.fileName = fileName;
+    up.fileSize = fileSize;
+    uploads.insert(fileId, up);
+
+    db->addFile(fileId, from->username(), to, fileName, fileSize);
+
+    resp["code"] = ERR_OK;
+    resp["fileId"] = fileId;
+    from->sendPacket(MSG_FILE_BEGIN_RESP, resp);
+
+    qDebug() << "file upload begin:" << fileName << fileSize << "bytes"
+        << from->username() << "->" << to;
+}
+
+void Server::handleFileChunk(ClientSession* from, const QJsonObject& obj)
+{
+    QString fileId = obj["fileId"].toString();
+
+    auto it = uploads.find(fileId);
+    if (it == uploads.end())
+        return;      // 没这个上传，或者刚被取消了，这块静默丢掉
+
+    Upload& up = it.value();
+
+    // 必须是发起这次上传的那条连接，别人不能往里塞东西
+    if (up.from != from)
+        return;
+
+    QByteArray data = QByteArray::fromBase64(obj["data"].toString().toLatin1());
+
+    if (up.file->write(data) != data.size()) {
+        qDebug() << "file write failed:" << fileId;
+        abortUpload(fileId);
+        return;
+    }
+
+    up.received += data.size();
+
+    // 收到的比声明的还多，说明对面在乱发，直接掐掉
+    if (up.received > up.fileSize) {
+        qDebug() << "file oversize, abort:" << fileId;
+        abortUpload(fileId);
+    }
+}
+
+void Server::handleFileEnd(ClientSession* from, const QJsonObject& obj)
+{
+    QJsonObject resp;
+    QString fileId = obj["fileId"].toString();
+    resp["fileId"] = fileId;
+
+    auto it = uploads.find(fileId);
+    if (it == uploads.end() || it.value().from != from) {
+        resp["code"] = ERR_FILE_NOT_FOUND;
+        from->sendPacket(MSG_FILE_END_RESP, resp);
+        return;
+    }
+
+    Upload up = it.value();
+    uploads.erase(it);
+
+    up.file->close();
+    delete up.file;
+
+    // 收到的字节数跟一开始声明的对不上，文件就是坏的，绝不能给对方
+    if (up.received != up.fileSize) {
+        qDebug() << "file size mismatch:" << up.received
+            << "expect" << up.fileSize;
+
+        QFile::remove(fileDir() + "/" + fileId);
+        db->deleteFile(fileId);
+
+        resp["code"] = ERR_FILE_BROKEN;
+        from->sendPacket(MSG_FILE_END_RESP, resp);
+        return;
+    }
+
+    db->finishFile(fileId);
+
+    resp["code"] = ERR_OK;
+    resp["size"] = up.received;
+    from->sendPacket(MSG_FILE_END_RESP, resp);
+
+    qDebug() << "file received:" << up.fileName << up.received << "bytes"
+        << from->username() << "->" << up.receiver;
+
+    // 第 4 步再在这里把文件消息推给接收方（在线推 / 不在线存 offline_msg）
+}
+
+void Server::handleFileCancel(ClientSession* from, const QJsonObject& obj)
+{
+    QString fileId = obj["fileId"].toString();
+
+    auto it = uploads.find(fileId);
+    if (it == uploads.end() || it.value().from != from)
+        return;
+
+    abortUpload(fileId);
+}
+
+void Server::abortUpload(const QString& fileId)
+{
+    auto it = uploads.find(fileId);
+    if (it == uploads.end())
+        return;
+
+    Upload up = it.value();
+    uploads.erase(it);
+
+    up.file->close();
+    delete up.file;
+
+    QFile::remove(fileDir() + "/" + fileId);
+    db->deleteFile(fileId);
+
+    qDebug() << "upload aborted:" << fileId << up.fileName;
 }

@@ -56,11 +56,35 @@ CREATE TABLE IF NOT EXISTS offline_msg (
     msgid      CHAR(36) NOT NULL UNIQUE,
     sender     VARCHAR(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
     receiver   VARCHAR(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    content    TEXT   NOT NULL,
+    content    MEDIUMTEXT   NOT NULL,
     send_time  BIGINT NOT NULL,
+    kind       TINYINT NOT NULL DEFAULT 0,
+    image      MEDIUMTEXT DEFAULT NULL,
+    img_w      INT NOT NULL DEFAULT 0,
+    img_h      INT NOT NULL DEFAULT 0,
+    file_id    CHAR(36) DEFAULT NULL,
+    file_name  VARCHAR(255) DEFAULT NULL,
+    file_size  BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     KEY idx_receiver (receiver),
+    FOREIGN KEY (sender)   REFERENCES users(username) ON DELETE CASCADE,
+    FOREIGN KEY (receiver) REFERENCES users(username) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS file_store (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    file_id     CHAR(36) NOT NULL UNIQUE,
+    sender      VARCHAR(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    receiver    VARCHAR(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    file_name   VARCHAR(255) NOT NULL,
+    file_size   BIGINT NOT NULL,
+    -- 0 = 还在传（或者传到一半断了）1 = 完整收好了。
+    -- 只有 finished=1 的才允许下载，否则会下到半截文件
+    finished    TINYINT NOT NULL DEFAULT 0,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    KEY idx_created (created_at),
     FOREIGN KEY (sender)   REFERENCES users(username) ON DELETE CASCADE,
     FOREIGN KEY (receiver) REFERENCES users(username) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

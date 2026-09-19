@@ -133,17 +133,69 @@ bool Database::getFriendList(const QString& username, QList<FriendInfo>& list)
     return true;
 }
 
-bool Database::addOfflineMsg(const QString& msgid, const QString& sender,
-    const QString& receiver, const QString& content, qint64 time)
+bool Database::addFile(const QString& fileId, const QString& sender,
+    const QString& receiver, const QString& fileName, qint64 fileSize)
 {
     QSqlQuery q(db);
-    q.prepare("INSERT INTO offline_msg (msgid, sender, receiver, content, send_time) "
+    // finished 默认 0。传完了才置 1 —— 中途断了就留一条未完成记录，
+    // 既不会被人下载到半截文件，清理任务也照样能按时间把它删掉
+    q.prepare("INSERT INTO file_store "
+        "(file_id, sender, receiver, file_name, file_size) "
         "VALUES (?, ?, ?, ?, ?)");
-    q.addBindValue(msgid);
+    q.addBindValue(fileId);
     q.addBindValue(sender);
     q.addBindValue(receiver);
-    q.addBindValue(content);
-    q.addBindValue(time);
+    q.addBindValue(fileName);
+    q.addBindValue(fileSize);
+
+    if (!q.exec()) {
+        qDebug() << "addFile failed:" << q.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+bool Database::finishFile(const QString& fileId)
+{
+    QSqlQuery q(db);
+    q.prepare("UPDATE file_store SET finished = 1 WHERE file_id = ?");
+    q.addBindValue(fileId);
+
+    if (!q.exec()) {
+        qDebug() << "finishFile failed:" << q.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+bool Database::deleteFile(const QString& fileId)
+{
+    QSqlQuery q(db);
+    q.prepare("DELETE FROM file_store WHERE file_id = ?");
+    q.addBindValue(fileId);
+
+    if (!q.exec()) {
+        qDebug() << "deleteFile failed:" << q.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+bool Database::addOfflineMsg(const OfflineMsg& msg)
+{
+    QSqlQuery q(db);
+    q.prepare("INSERT INTO offline_msg "
+        "(msgid, sender, receiver, content, send_time, kind, image, img_w, img_h) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    q.addBindValue(msg.msgid);
+    q.addBindValue(msg.sender);
+    q.addBindValue(msg.receiver);
+    q.addBindValue(msg.content);
+    q.addBindValue(msg.time);
+    q.addBindValue(msg.kind);
+    q.addBindValue(msg.image);
+    q.addBindValue(msg.imgW);
+    q.addBindValue(msg.imgH);
 
     if (!q.exec()) {
         qDebug() << "addOfflineMsg failed:" << q.lastError().text();
@@ -158,7 +210,8 @@ bool Database::getOfflineMsgs(const QString& receiver, QList<OfflineMsg>& list, 
 
     QSqlQuery q(db);
     // 按 id 正序取，保证补发的顺序跟当初发送的顺序一致
-    q.prepare("SELECT msgid, sender, receiver, content, send_time "
+    q.prepare("SELECT msgid, sender, receiver, content, send_time, "
+        "kind, image, img_w, img_h "
         "FROM offline_msg WHERE receiver = ? ORDER BY id ASC LIMIT ?");
     q.addBindValue(receiver);
     q.addBindValue(limit);
@@ -175,6 +228,10 @@ bool Database::getOfflineMsgs(const QString& receiver, QList<OfflineMsg>& list, 
         m.receiver = q.value(2).toString();
         m.content = q.value(3).toString();
         m.time = q.value(4).toLongLong();
+        m.kind = q.value(5).toInt();
+        m.image = q.value(6).toString();
+        m.imgW = q.value(7).toInt();
+        m.imgH = q.value(8).toInt();
         list.append(m);
     }
 

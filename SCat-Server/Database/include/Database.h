@@ -25,6 +25,11 @@ struct OfflineMsg
     QString receiver;
     QString content;
     qint64  time = 0;
+
+    int     kind = KIND_TEXT;
+    QString image;          // base64。服务端不解码，收什么存什么、原样发回去
+    int     imgW = 0;
+    int     imgH = 0;
 };
 
 class Database : public QObject
@@ -50,8 +55,13 @@ public:
     bool getPendingRequests(const QString& receiver, QList<FriendInfo>& list);
     int  handleRequest(const QString& receiver, const QString& sender, int action);
 
+    // 文件暂存
+    bool addFile(const QString& fileId, const QString& sender, const QString& receiver,const QString& fileName, qint64 fileSize);
+    bool finishFile(const QString& fileId);      // 收完整了，置 finished=1
+    bool deleteFile(const QString& fileId);      // 传坏了 / 取消了，把记录抹掉
+
     // 离线消息
-    bool addOfflineMsg(const QString& msgid, const QString& sender,const QString& receiver, const QString& content, qint64 time);
+    bool addOfflineMsg(const OfflineMsg& msg);
     bool getOfflineMsgs(const QString& receiver, QList<OfflineMsg>& list, int limit);
     bool deleteOfflineMsgs(const QString& receiver, const QStringList& msgids);
 private:

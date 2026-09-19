@@ -2,6 +2,7 @@
 #define APPCONTROLLER_H
 
 #include <QObject>
+#include <QImage>
 #include <QJsonObject>
 #include <QJsonArray>
 #include "../../NetWork/include/NetWorkManager.h"
@@ -19,6 +20,7 @@
 #include "../../Setting/include/SettingsManager.h"
 #include "../include/AvatarUtils.h" 
 #include "../include/Notification.h"
+#include "../../Chat/include/FileTransfer.h"
 
 class NetWorkManager;
 class Login;
@@ -33,6 +35,7 @@ class AddFriendWindow;
 class RequestWindow;
 class SettingsManager;
 class Notification;
+class FileTransfer;
 
 
 class AppController : public QObject
@@ -72,10 +75,17 @@ private slots:
 
     // 聊天
     void onSendTextMessage(const QString& to, const QString& content);
+    void onSendFileClicked(const QString& to);
+    void onImagePasted(const QString& to, const QImage& image);
     void onRequestHistory(const QString& friendId);
     void onMessageSent(const ChatMessage& msg);
     void onMessageReceived(const ChatMessage& msg);
     void onChatSendFailed(const QString& reason);
+
+    // 文件传输（第 3 步接上气泡，现在先打日志）
+    void onFileProgress(const QString& taskId, qint64 done, qint64 total);
+    void onFileFinished(const QString& taskId, const QString& fileId);
+    void onFileFailed(const QString& taskId, const QString& reason);
 
     // 网络状态
     void onNetError(const QString& msg);
@@ -92,6 +102,7 @@ private slots:
     void onTrayActivated();
 private:
     void updatePendingUi();
+    void sendImage(const QString& to, const QImage& image);
 
     NetWorkManager* net;
     Login* loginLogic;
@@ -109,6 +120,7 @@ private:
     QJsonArray pendingRequests;
     SettingsManager* settingsMgr;
     Notification* notify;
+    FileTransfer* fileTransfer;
 };
 
 #endif // !APPCONTROLLER_H

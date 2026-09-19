@@ -141,4 +141,27 @@ namespace AppPath
     {
         return avatarCacheDir(user) + "/" + fileName;
     }
+
+    QString imageDir(const QString& user)
+    {
+        // 跟 avatarCacheDir 一样不在这里建目录 —— 画气泡时会频繁调用，
+        // 真正要写文件的时候再 mkpath
+        return dataRoot() + "/" + user + "/images";
+    }
+
+    QString imagePath(const QString& user, const QString& fileName)
+    {
+        return imageDir(user) + "/" + fileName;
+    }
+
+    QString fileDir(const QString& user)
+    {
+        // 跟 imageDir 一样不在这里建目录，真要落盘的时候再 mkpath
+        return dataRoot() + "/" + user + "/files";
+    }
+
+    QString filePath(const QString& user, const QString& fileName)
+    {
+        return fileDir(user) + "/" + fileName;
+    }
 }

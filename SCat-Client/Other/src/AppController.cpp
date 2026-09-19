@@ -1,11 +1,17 @@
 #include "../include/AppController.h"
+#include "../include/ImageUtils.h"
 #include "../include/UserSession.h"
 #include "../include/AppPath.h"
 #include "../include/AvatarUtils.h"
 #include <QMessageBox>
 #include <QSettings>
 #include <QFile>
+#include <QFileDialog>
+#include <QStandardPaths>
 #include <QCoreApplication>
+#include <QDebug>
+#include <QUuid>
+#include <QDateTime>
 #include <QDebug>
 
 AppController::AppController(QObject* parent)
@@ -23,6 +29,7 @@ AppController::AppController(QObject* parent)
     , requestWin(nullptr)
     , settingsMgr(nullptr)
     , notify(nullptr)
+    , fileTransfer(nullptr)
     , pendingCount(0)
 {
     // 网络层
@@ -33,6 +40,7 @@ AppController::AppController(QObject* parent)
     regLogic = new Register(net, this);
     friendMgr = new FriendManager(net, this);
     chatNet = new ChatNetWork(net, this);
+    fileTransfer = new FileTransfer(net, this);
     storage = new ChatStorage(this);
     settingsMgr = new SettingsManager(net, this);
     notify = new Notification(this);
@@ -52,6 +60,9 @@ AppController::AppController(QObject* parent)
     connect(chatNet, &ChatNetWork::messageSent, this, &AppController::onMessageSent);
     connect(chatNet, &ChatNetWork::messageReceived, this, &AppController::onMessageReceived);
     connect(chatNet, &ChatNetWork::sendFailed, this, &AppController::onChatSendFailed);
+    connect(fileTransfer, &FileTransfer::progress, this, &AppController::onFileProgress);
+    connect(fileTransfer, &FileTransfer::finished, this, &AppController::onFileFinished);
+    connect(fileTransfer, &FileTransfer::failed, this, &AppController::onFileFailed);
     connect(settingsMgr, &SettingsManager::nicknameSaved, this, &AppController::onNicknameSaved);
     connect(settingsMgr, &SettingsManager::avatarUploaded, this, &AppController::onAvatarUploaded);
     connect(settingsMgr, &SettingsManager::avatarDownloaded, this, &AppController::onAvatarDownloaded);
@@ -152,6 +163,8 @@ void AppController::onLoginSuccess(const QJsonObject& info)
     scatWin->setStoragePath(AppPath::dataRoot());
 
     connect(scatWin, &ScatWindow::sendTextMessage, this, &AppController::onSendTextMessage);
+    connect(scatWin, &ScatWindow::sendFileClicked, this, &AppController::onSendFileClicked);
+    connect(scatWin, &ScatWindow::sendImage, this, &AppController::onImagePasted);
     connect(scatWin, &ScatWindow::requestHistory, this, &AppController::onRequestHistory);
     connect(scatWin, &ScatWindow::sendAddFriendClicked, this, &AppController::showAddFriendWindow);
     connect(scatWin, &ScatWindow::sendNotifyClicked, this, &AppController::onNotifyClicked);
@@ -247,6 +260,100 @@ void AppController::onFriendStatusChanged(const QString& username, bool online)
 void AppController::onSendTextMessage(const QString& to, const QString& content)
 {
     chatNet->sendTextMessage(to, content);
+}
+
+void AppController::sendImage(const QString& to, const QImage& image)
+{
+    // 没选中任何人就不发（这时候聊天界面根本没显示，保险起见）
+    if (to.isEmpty() || image.isNull())
+        return;
+
+    QSize size;
+    QString error;
+    QByteArray data = ImageUtils::compress(image, size, error);
+
+    if (data.isEmpty()) {
+        QMessageBox::warning(scatWin, "发送失败", error);
+        return;
+    }
+
+    QString imgName = ImageUtils::saveToLocal(data);
+    if (imgName.isEmpty()) {
+        QMessageBox::warning(scatWin, "发送失败", "图片保存失败，请检查数据目录的写入权限");
+        return;
+    }
+
+    // 图已经存在本地了，现在发给服务端。
+    // 回执带着 msgid 和服务端时间戳回来，那时候才走 onMessageSent 存库 + 上屏 ——
+    // 跟文本消息完全同一条路径，自己发的和收到的没有分叉
+    chatNet->sendImageMessage(to, imgName, data, size);
+}
+
+void AppController::onSendFileClicked(const QString& to)
+{
+    if (to.isEmpty())
+        return;
+
+    QString picDir = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
+
+    // 不再只让选图片。选到图片就压缩了当图片发，其它一律走文件传输，
+    // 一个按钮两种行为，用户不用先想"我这是图还是文件"
+    QString file = QFileDialog::getOpenFileName(scatWin, "选择文件", picDir,
+        "所有文件 (*.*)");
+
+    if (file.isEmpty())
+        return;      // 用户取消了
+
+    if (!ImageUtils::isImageFile(file)) {
+        // 第 3 步再产生消息和气泡，这一步先把上传链路本身跑通
+        fileTransfer->addUpload(QUuid::createUuid().toString(QUuid::WithoutBraces),
+            to, file);
+        return;
+    }
+
+    QString error;
+    QImage image = ImageUtils::loadFile(file, error);
+
+    if (image.isNull()) {
+        QMessageBox::warning(scatWin, "发送失败", error);
+        return;
+    }
+
+    sendImage(to, image);
+}
+
+// ---------- 文件传输（第 3 步接上气泡，现在只打日志） ----------
+
+void AppController::onFileProgress(const QString& taskId, qint64 done, qint64 total)
+{
+    Q_UNUSED(taskId);
+
+    // 每块都打太吵，只在整 10% 的时候打一行
+    static int lastPercent = -1;
+    int percent = total > 0 ? int(done * 100 / total) : 0;
+
+    if (percent / 10 != lastPercent / 10) {
+        lastPercent = percent;
+        qDebug() << "upload progress:" << percent << "%" << done << "/" << total;
+    }
+}
+
+void AppController::onFileFinished(const QString& taskId, const QString& fileId)
+{
+    Q_UNUSED(taskId);
+    qDebug() << "upload done, fileId =" << fileId;
+}
+
+void AppController::onFileFailed(const QString& taskId, const QString& reason)
+{
+    Q_UNUSED(taskId);
+    qDebug() << "upload failed:" << reason;
+    QMessageBox::warning(scatWin, "发送失败", reason);
+}
+
+void AppController::onImagePasted(const QString& to, const QImage& image)
+{
+    sendImage(to, image);
 }
 
 void AppController::onRequestHistory(const QString& friendId)

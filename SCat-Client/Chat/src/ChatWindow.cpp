@@ -1,7 +1,13 @@
 #include "../include/ChatWindow.h"
+#include "../../Other/include/ImageUtils.h"
 #include <QDebug>
 #include <QScrollBar>
 #include <QAbstractItemView>
+#include <QDesktopServices>
+#include <QUrl>
+
+static const int kImageMaxW = 240;
+static const int kImageMaxH = 320;
 
 ChatWindow::ChatWindow(QWidget* parent) : QWidget(parent)
 {
@@ -135,7 +141,7 @@ void ChatWindow::initInput()
     inputLayout->setSpacing(5);
 
     // 1. 输入框
-    msgEdit = new QTextEdit(inputContainer);
+    msgEdit = new ChatInputEdit(inputContainer);
     msgEdit->setPlaceholderText("Enter your message");
     msgEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     msgEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -145,11 +151,12 @@ void ChatWindow::initInput()
         "   background: transparent;"
         "   font-size: 14px;"
         "   color: #333;"
-        "   padding-top: 8px;"
+        "   padding-top: 6px;"
         "}"
     );
     msgEdit->setFixedHeight(40);
-    msgEdit->installEventFilter(this);
+    connect(msgEdit, &ChatInputEdit::sendPressed, this, &ChatWindow::onReturnPressed);
+    connect(msgEdit, &ChatInputEdit::imagePasted, this, &ChatWindow::sendImage);
 
     // 2. 表情按钮 (QPushButton)
     btnmood = new QPushButton(inputContainer);
@@ -203,6 +210,64 @@ QWidget* ChatWindow::createBubbleWidget(const QString& text, bool isSelf)
         layout->addStretch();
     }
     return widget;
+}
+
+QWidget* ChatWindow::createImageBubbleWidget(const ChatMessage& msg)
+{
+    QWidget* widget = new QWidget();
+    widget->setStyleSheet("background-color: transparent;");
+    QHBoxLayout* layout = new QHBoxLayout(widget);
+    layout->setContentsMargins(10, 10, 10, 10);
+
+    QLabel* bubble = new QLabel();
+    QString path = ImageUtils::pathFor(msg.imgName);
+    QPixmap pix(path);
+
+    if (pix.isNull()) {
+        // 文件没了（用户手动删的，或者换数据目录时漏拷了），
+        // 退化成一个文字气泡，别留一块空白让人莫名其妙
+        bubble->setText("[图片已失效]");
+        bubble->setStyleSheet("QLabel { background-color: #FFFFFF; color: #999999; "
+            "border-radius: 12px; padding: 12px 16px; }");
+    }
+    else {
+        // 宽高是存库时记下来的，这里不用解码整张图就能定尺寸
+        QSize show = ImageUtils::fitSize(msg.imgW, msg.imgH, kImageMaxW, kImageMaxH);
+
+        bubble->setFixedSize(show);
+        bubble->setPixmap(pix.scaled(show, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        bubble->setCursor(Qt::PointingHandCursor);
+        bubble->setStyleSheet("QLabel { background: transparent; border: none; }");
+
+        // QLabel 没有 clicked 信号。把路径挂在属性上，
+        // 统一交给 eventFilter 处理，不用为了点一下再造个类
+        bubble->setProperty("imagePath", path);
+        bubble->installEventFilter(this);
+    }
+
+    if (msg.isSelf) {
+        layout->addStretch();
+        layout->addWidget(bubble);
+    }
+    else {
+        layout->addWidget(bubble);
+        layout->addStretch();
+    }
+
+    return widget;
+}
+
+void ChatWindow::addBubble(const ChatMessage& msg)
+{
+    QWidget* bubbleWidget = (msg.kind == KIND_IMAGE)
+        ? createImageBubbleWidget(msg)
+        : createBubbleWidget(msg.content, msg.isSelf);
+
+    QListWidgetItem* item = new QListWidgetItem(msgList);
+    item->setSizeHint(bubbleWidget->sizeHint());
+    item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
+    msgList->setItemWidget(item, bubbleWidget);
+    msgList->scrollToBottom();
 }
 
 QWidget* ChatWindow::createFileBubbleWidget(const QString& fileName, const QString& fileSize, bool isSelf)
@@ -285,7 +350,7 @@ void ChatWindow::addFileMessage(const QString& fileName, const QString& fileSize
 
 bool ChatWindow::eventFilter(QObject* watched, QEvent* event)
 {
-    if (watched == msgEdit && event->type() == QEvent::KeyPress)
+    /*if (watched == msgEdit && event->type() == QEvent::KeyPress)
     {
         QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
         if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter)
@@ -300,7 +365,18 @@ bool ChatWindow::eventFilter(QObject* watched, QEvent* event)
                 return true;
             }
         }
+    }*/
+
+    if (event->type() == QEvent::MouseButtonRelease)
+    {
+        QString path = watched->property("imagePath").toString();
+        if (!path.isEmpty())
+        {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+            return true;
+        }
     }
+
     return QWidget::eventFilter(watched, event);
 }
 
@@ -344,14 +420,14 @@ void ChatWindow::setHistory(const QList<ChatMessage>& list)
     msgList->clear();
 
     for (const ChatMessage& msg : list)
-        addMessage(msg.content, msg.isSelf);
+        addBubble(msg);
 
     msgList->scrollToBottom();
 }
 
 void ChatWindow::appendMessage(const ChatMessage& msg)
 {
-    addMessage(msg.content, msg.isSelf);
+    addBubble(msg);
 }
 
 void ChatWindow::setAvatar(const QPixmap& avatar)

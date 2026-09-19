@@ -14,6 +14,12 @@ NetWorkManager::NetWorkManager(QObject* parent)
         this, &NetWorkManager::onErrorOccurred);
     connect(socket, &QTcpSocket::readyRead,
         this, &NetWorkManager::onReadyRead);
+    connect(socket, &QTcpSocket::bytesWritten,
+        this, &NetWorkManager::bytesWritten);
+}
+qint64 NetWorkManager::pendingBytes() const
+{
+    return socket->bytesToWrite();
 }
 
 void NetWorkManager::connectToServer(const QString& host, quint16 port)

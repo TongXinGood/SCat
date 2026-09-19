@@ -14,6 +14,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QHash>
+#include <QImage>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QList>
@@ -49,6 +50,7 @@ signals:
 
     // 转发 ChatWindow 的信号，附带当前聊天的 friendId
     void sendTextMessage(const QString& friendId, const QString& msg);
+    void sendImage(const QString& friendId, const QImage& image);
     void sendFileClicked(const QString& friendId);
     void sendMoodClicked(const QString& friendId);
 

@@ -21,6 +21,13 @@ namespace AppPath
     QString avatarCacheDir(const QString& user);
     QString avatarCachePath(const QString& user, const QString& fileName);
 
+    QString imageDir(const QString& user);
+    QString imagePath(const QString& user, const QString& fileName);
+
+    // 收到的文件下载到哪。跟图片不同，这里用的是对方的原始文件名
+    QString fileDir(const QString& user);
+    QString filePath(const QString& user, const QString& fileName);
+
     // 这个目录能不能写
     bool isWritable(const QString& dir);
 

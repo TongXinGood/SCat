@@ -146,7 +146,7 @@ void ScatWindow::initProfileSection()
     btnSettings->setFixedSize(24, 24);
     btnSettings->setCursor(Qt::PointingHandCursor);
     btnSettings->setIcon(QIcon(":/Resource/icon/settings.png")); // 记得添加实际资源
-    btnSettings->setIconSize(QSize(22, 22));
+    btnSettings->setIconSize(QSize(20, 20));
     btnSettings->setStyleSheet(
         "QPushButton { border: none; background: transparent; }"
         "QPushButton:hover { background-color: #F0F0F0; border-radius: 12px; }"
@@ -172,6 +172,10 @@ void ScatWindow::initConnect()
     connect(settingsPage, &SettingsPage::sendSaveNickname, this, &ScatWindow::sendSaveNickname);
     connect(settingsPage, &SettingsPage::sendChangeStorage, this, &ScatWindow::sendChangeStorage);
 
+    // 通过 Lambda 捕获 currentFriendId 转发给外部
+    connect(chatWindow, &ChatWindow::sendImage, this, [this](const QImage& image) {
+        emit sendImage(currentFriendId, image);
+        });
     // 通过 Lambda 捕获 currentFriendId 转发给外部
     connect(chatWindow, &ChatWindow::sendFileClicked, this, [this]() {
         emit sendFileClicked(currentFriendId);
