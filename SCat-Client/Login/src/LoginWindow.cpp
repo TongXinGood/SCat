@@ -185,4 +185,27 @@ void LoginWindow::onForgotpwdClicked()
     emit sendForgotpwdClicked();
 }
 
+QString LoginWindow::account() const
+{
+    return editaccount->text().trimmed();
+}
 
+QString LoginWindow::password() const
+{
+    return editpwd->text().trimmed();
+}
+
+bool LoginWindow::isRemember() const
+{
+    return checkrem->isChecked();
+}
+
+void LoginWindow::setSavedLogin(const QString& account, const QString& pwd)
+{
+    editaccount->setText(account);
+    editpwd->setText(pwd);
+    checkrem->setChecked(true);
+
+    // 两个框都填好了，焦点直接给登录按钮，打开就能回车进去
+    btnLogin->setFocus();
+}

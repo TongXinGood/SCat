@@ -82,34 +82,25 @@ void ScatWindow::initUI()
 
 
     // ================= 右侧容器 =================
+        // ================= 右侧容器 =================
     rightStackedWidget = new QStackedWidget(centralWidget);
 
-    // 页面 0: 默认占位背景
+    // 页面 0: 没选中好友时的空白页。原来这里铺了一张背景图，
+    // 现在留纯白，跟左侧栏之间靠那条 1px 的分割线区分
     defaultPage = new QWidget();
-    defaultPage->setStyleSheet("background-color: #F2F0F5;"); // 与聊天窗口背景保持一致
-    QHBoxLayout* defaultLayout = new QHBoxLayout(defaultPage);
-    defaultLayout->setContentsMargins(0, 0, 0, 0);
-
-    lbDefaultBg = new QLabel(defaultPage);
-    lbDefaultBg->setAlignment(Qt::AlignCenter);
-    lbDefaultBg->setPixmap(QPixmap(":/Resource/icon/background.png"));
-    lbDefaultBg->setScaledContents(false);
-
-    defaultLayout->addWidget(lbDefaultBg);
+    defaultPage->setStyleSheet("background-color: #FFFFFF;");
 
     // 页面 1: 聊天窗口
     chatWindow = new ChatWindow();
 
-    rightStackedWidget->addWidget(defaultPage); // Index 0
-    rightStackedWidget->addWidget(chatWindow);  // Index 1
-
+    // 页面 2: 设置页
     settingsPage = new SettingsPage();
 
     rightStackedWidget->addWidget(defaultPage);   // Index 0
     rightStackedWidget->addWidget(chatWindow);    // Index 1
     rightStackedWidget->addWidget(settingsPage);  // Index 2
 
-    // 默认显示背景图
+    // 默认显示空白页
     rightStackedWidget->setCurrentIndex(0);
 
     // ================= 组合并应用到 NoFrame =================

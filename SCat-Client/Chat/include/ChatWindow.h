@@ -55,6 +55,10 @@ private:
     void initInput();
     void addBubble(const ChatMessage& msg);
 
+    // 跟上一条隔得久了就插一条居中的时间，像微信那样
+    void addTimeSeparator(qint64 time);
+    QWidget* createTimeWidget(qint64 time);
+
     QWidget* createBubbleWidget(const QString& text, bool isSelf);
     QWidget* createImageBubbleWidget(const ChatMessage& msg);
     QWidget* createFileBubbleWidget(const ChatMessage& msg);
@@ -71,6 +75,7 @@ private:
 
     QWidget* inputContainer;
     QHash<QString, FileBubble*> fileBubbles;
+    qint64 lastBubbleTime;
     QPushButton* btnmood; // 改为 QPushButton
     ChatInputEdit* msgEdit;
     QPushButton* btnFile;

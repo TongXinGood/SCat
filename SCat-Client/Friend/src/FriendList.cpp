@@ -33,7 +33,7 @@ void FriendList::initUI()
     );
 
     searchLayout = new QHBoxLayout(searchContainer);
-    searchLayout->setContentsMargins(10, 0, 9, 0);
+    searchLayout->setContentsMargins(10, 0, 10, 0);
     searchLayout->setSpacing(8);
 
     lbSearchIcon = new QLabel(searchContainer);

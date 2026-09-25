@@ -21,14 +21,20 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if (WIN32)
+    enable_language(RC)
+endif()
+
+
 # 5. 寻找 Qt6 库
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Multimedia Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
 find_package(Qt6 COMPONENTS Widgets Network REQUIRED)
 find_package(Qt6 COMPONENTS Widgets Sql REQUIRED)
 
 # 6. 添加可执行文件 (只能写一次！)
 add_executable(SCat-Client
     "main.cpp"
+    "app.rc"
      "framelesswindow.h"
     "framelesswindow.cpp"
    "Login/include/LoginWindow.h" 
@@ -87,7 +93,6 @@ target_link_libraries(SCat-Client PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
-    Qt6::Multimedia
     Qt6::Network
     Qt6::Sql
     dwmapi 

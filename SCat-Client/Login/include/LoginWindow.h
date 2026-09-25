@@ -18,6 +18,14 @@ public:
 	//初始化登陆窗口
 	explicit LoginWindow(QWidget* parent = nullptr);
 	~LoginWindow();
+
+	QString account() const;
+	QString password() const;
+	bool    isRemember() const;
+
+	// 启动时把上次记住的账号密码填回去，并自动勾上
+	void setSavedLogin(const QString& account, const QString& pwd);
+
 signals:
 	//发送信号：点击登陆
 	void sendLoginClicked(const QString& account , const QString& pwd);

@@ -5,11 +5,39 @@
 #include <QAbstractItemView>
 #include <QDesktopServices>
 #include <QUrl>
+#include <QDateTime>
 
 static const int kImageMaxW = 240;
 static const int kImageMaxH = 320;
 
-ChatWindow::ChatWindow(QWidget* parent) : QWidget(parent)
+static const qint64 kTimeGapMs = 5 * 60 * 1000;
+
+
+static QString formatChatTime(qint64 ms)
+{
+    QDateTime t = QDateTime::fromMSecsSinceEpoch(ms);
+    QDate day = t.date();
+    QDate today = QDate::currentDate();
+
+    QString clock = t.toString("HH:mm");
+
+    if (day == today)
+        return clock;
+
+    if (day == today.addDays(-1))
+        return "昨天 " + clock;
+
+    // 不做"前天"，再早一律给具体日期。
+    // 用 arg 拼而不是 toString("M月d日")，免得格式串里的字符被当成占位符
+    if (day.year() == today.year())
+        return QString("%1月%2日 %3").arg(day.month()).arg(day.day()).arg(clock);
+
+    // 跨年了得带上年份，不然"9月18日"到底是今年的还是去年的说不清
+    return QString("%1年%2月%3日 %4")
+        .arg(day.year()).arg(day.month()).arg(day.day()).arg(clock);
+}
+
+ChatWindow::ChatWindow(QWidget* parent) : QWidget(parent), lastBubbleTime(0)
 {
     // 开启 StyledBackground 属性，确保 QWidget 能正常渲染背景色
     this->setAttribute(Qt::WA_StyledBackground, true);
@@ -259,6 +287,15 @@ QWidget* ChatWindow::createImageBubbleWidget(const ChatMessage& msg)
 
 void ChatWindow::addBubble(const ChatMessage& msg)
 {
+
+    if (msg.time > 0 &&
+        (lastBubbleTime == 0 || msg.time - lastBubbleTime >= kTimeGapMs)) {
+        addTimeSeparator(msg.time);
+    }
+
+    if (msg.time > 0)
+        lastBubbleTime = msg.time;
+
     QWidget* bubbleWidget = nullptr;
 
     if (msg.kind == KIND_IMAGE)
@@ -273,6 +310,49 @@ void ChatWindow::addBubble(const ChatMessage& msg)
     item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
     msgList->setItemWidget(item, bubbleWidget);
     msgList->scrollToBottom();
+}
+
+void ChatWindow::addTimeSeparator(qint64 time)
+{
+    QWidget* widget = createTimeWidget(time);
+
+    QListWidgetItem* item = new QListWidgetItem(msgList);
+    item->setSizeHint(widget->sizeHint());
+    item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
+    msgList->setItemWidget(item, widget);
+}
+
+QWidget* ChatWindow::createTimeWidget(qint64 time)
+{
+    QWidget* widget = new QWidget();
+    widget->setStyleSheet("background-color: transparent;");
+
+    QHBoxLayout* layout = new QHBoxLayout(widget);
+    // 上边距比下边距大一点 —— 时间是"这一段对话的开头"，
+    // 跟上一段拉开距离、跟下面的气泡贴紧，读起来更有层次
+    layout->setContentsMargins(10, 10, 10, 2);
+
+    QLabel* label = new QLabel(formatChatTime(time));
+    label->setObjectName("TimeTip");
+    label->setAlignment(Qt::AlignCenter);
+
+    // 底色取聊天区背景 #F2F0F5 的同色系加深一档，
+    // 比纯灰更搭，也不会跟白色气泡抢眼
+    label->setStyleSheet(
+        "QLabel#TimeTip {"
+        "   background-color: #E6E2EE;"
+        "   color: #7E7A8C;"
+        "   font-size: 11px;"
+        "   border-radius: 9px;"
+        "   padding: 3px 10px;"
+        "}"
+    );
+
+    layout->addStretch();
+    layout->addWidget(label);
+    layout->addStretch();
+
+    return widget;
 }
 
 QWidget* ChatWindow::createFileBubbleWidget(const ChatMessage& msg)
@@ -365,6 +445,8 @@ void ChatWindow::setHistory(const QList<ChatMessage>& list)
     fileBubbles.clear();
 
     msgList->clear();
+
+    lastBubbleTime = 0;
 
     for (const ChatMessage& msg : list)
         addBubble(msg);

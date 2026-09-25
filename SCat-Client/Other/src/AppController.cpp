@@ -18,6 +18,10 @@
 #include <QDesktopServices>
 #include <QUrl>
 
+static const char* kRememberKey = "login/remember";
+static const char* kAccountKey = "login/account";
+static const char* kPasswordKey = "login/password";
+
 AppController::AppController(QObject* parent)
     : QObject(parent)
     , net(nullptr)
@@ -125,8 +129,14 @@ void AppController::showLoginWindow()
             loginLogic, &Login::doLogin);
         connect(loginWin, &LoginWindow::sendRegisterClicked,
             this, &AppController::showRegisterWindow);
-    }
 
+        // 上次勾了"记住密码"的话，把账号密码填回去
+        QSettings settings;
+        if (settings.value(kRememberKey, false).toBool()) {
+            loginWin->setSavedLogin(settings.value(kAccountKey).toString(),
+                settings.value(kPasswordKey).toString());
+        }
+    }
     loginWin->show();
 }
 
@@ -151,6 +161,22 @@ void AppController::showRegisterWindow()
 
 void AppController::onLoginSuccess(const QJsonObject& info)
 {
+
+    if (loginWin) {
+        QSettings settings;
+
+        if (loginWin->isRemember()) {
+            settings.setValue(kRememberKey, true);
+            settings.setValue(kAccountKey, loginWin->account());
+            settings.setValue(kPasswordKey, loginWin->password());
+        }
+        else {
+            // 取消勾选就得把之前记的清掉，不然"取消"等于没取消。
+            // remove("login") 是把整个 login 组一起删
+            settings.remove("login");
+        }
+    }
+
     QString username = info["username"].toString();
     QString nickname = info["nickname"].toString();
     QString avatar = info["avatar"].toString();

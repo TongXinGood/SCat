@@ -478,6 +478,13 @@ void Server::sendOfflineMessages(ClientSession* to)
             obj["w"] = m.imgW;
             obj["h"] = m.imgH;
         }
+        else if (m.kind == KIND_FILE) {
+            // 文件本体还在 files/ 目录里躺着，这里只带元信息过去。
+            // 漏了这段的话对方拿到的是一张空卡片，点下载会说"找不到文件信息"
+            obj["fileId"] = m.fileId;
+            obj["fileName"] = m.fileName;
+            obj["fileSize"] = m.fileSize;
+        }
 
         batchBytes += m.image.size();
         arr.append(obj);

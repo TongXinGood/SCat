@@ -50,6 +50,7 @@ int main(int argc, char* argv[])
 
     QCoreApplication::setOrganizationName("SCat");
     QCoreApplication::setApplicationName("SCat-Client");
+    a.setWindowIcon(QIcon(":/Resource/icon/logo.ico"));
     a.setStyleSheet(kMenuStyle);
     QTranslator qtTranslator;
     if (qtTranslator.load(QStringLiteral("qtbase_zh_CN"),

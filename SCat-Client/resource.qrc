@@ -12,5 +12,6 @@
         <file>Resource/icon/settings.png</file>
         <file>Resource/icon/background.png</file>
         <file>Resource/icon/logo.png</file>
+        <file>Resource/icon/logo.ico</file>
     </qresource>
 </RCC>
