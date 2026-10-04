@@ -1,6 +1,7 @@
 ﻿#include <QApplication>
 #include <QVBoxLayout>
 #include <QTranslator>
+#include <QStyleHints>
 #include <QLibraryInfo>
 #include <QLabel>
 #include "NoFrame.h"
@@ -47,6 +48,8 @@ int main(int argc, char* argv[])
 {   
     
     QApplication a(argc, argv);
+    
+    a.styleHints()->setColorScheme(Qt::ColorScheme::Light);
 
     QCoreApplication::setOrganizationName("SCat");
     QCoreApplication::setApplicationName("SCat-Client");
