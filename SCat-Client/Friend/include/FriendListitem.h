@@ -7,6 +7,7 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QString>
+#include "../../Chat/include/EmojiLabel.h"
 
 class FriendListItem : public QWidget
 {
@@ -32,7 +33,7 @@ private:
 
     QLabel* lbAvatar;
     QLabel* lbName;
-    QLabel* lbLastMsg;
+    EmojiLabel* lbLastMsg;      // 最后一条消息，表情画成 Noto 小图
     QLabel* lbUnread;           // 最右侧的未读数红点
 
     QHBoxLayout* mainLayout;

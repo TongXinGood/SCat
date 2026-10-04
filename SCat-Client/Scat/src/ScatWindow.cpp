@@ -175,9 +175,6 @@ void ScatWindow::initConnect()
     connect(chatWindow, &ChatWindow::sendFileClicked, this, [this]() {
         emit sendFileClicked(currentFriendId);
         });
-    connect(chatWindow, &ChatWindow::sendMoodClicked, this, [this]() {
-        emit sendMoodClicked(currentFriendId);
-        });
 }
 
 void ScatWindow::onFriendSelected(const QString& friendId, const QString& friendName)
@@ -240,13 +237,14 @@ void ScatWindow::setFriendList(const QJsonArray& friends)
         friendList->addFriendItem(username,
             AvatarUtils::load(obj["avatar"].toString(), 45),
             obj["nickname"].toString(),
-            obj["lastMsg"].toString());
+            obj["lastMsg"].toString(),
+            obj["lastTime"].toVariant().toLongLong());
 
         // 列表是整体重建的，未读数要重新贴回去，
         // 否则好友改个昵称触发重建，红点就凭空消失了
         friendList->setUnread(username, unreadCounts.value(username));
     }
-
+    friendList->sortByTime();
     qDebug() << "friend list loaded:" << friends.size();
 }
 
@@ -281,8 +279,9 @@ void ScatWindow::addChatMessage(const ChatMessage& msg)
 {
     QString peer = msg.peer();
 
-    // 左边列表的"最后一条消息"跟着更新
-    friendList->updateLastMessage(peer, msg.content);
+    // 左边列表的"最后一条消息"跟着更新，这个人顶到最上面。
+    // 自己发的也算，跟 QQ、微信一样
+    friendList->updateLastMessage(peer, msg.content, msg.time);
 
     // 正在看这个人的对话才画出来；在跟别人聊天就只更新列表，
     // 消息已经存进 ChatStorage 了，切回去的时候会重新读出来

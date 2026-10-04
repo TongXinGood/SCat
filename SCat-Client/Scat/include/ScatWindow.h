@@ -58,7 +58,6 @@ signals:
     void fileRetryClicked(const QString& msgid, const QString& to,const QString& filePath);
     void fileOpenClicked(const QString& msgid, const QString& filePath);
     void fileDownloadClicked(const QString& msgid);
-    void sendMoodClicked(const QString& friendId);
 
     void sendNotifyClicked();
 

@@ -35,7 +35,7 @@ void FriendListItem::initUI(const QPixmap& avatar, const QString& name, const QS
     lbName = new QLabel(name, this);
     lbName->setObjectName("ItemName");
 
-    lbLastMsg = new QLabel(lastMsg, this);
+    lbLastMsg = new EmojiLabel(lastMsg, this);
     lbLastMsg->setObjectName("ItemLastMsg");
 
     textLayout->addWidget(lbName);

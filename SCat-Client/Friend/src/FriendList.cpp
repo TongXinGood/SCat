@@ -3,6 +3,30 @@
 #include <QIcon>
 #include <QCursor>
 
+// 列表项上挂的两个数据：最后一条消息的时间，和加进列表时的先后顺序
+static const int kTimeRole = Qt::UserRole + 1;
+static const int kOrderRole = Qt::UserRole + 2;
+
+// QListWidget 默认按文字排序，这里换成按时间比。
+// 时间一样（比如都没聊过天，都是 0）就按加进来的先后，
+// 不然 Qt 的排序不保证稳定，每来一条消息没聊过的那些人就乱跳一次
+class FriendListWidgetItem : public QListWidgetItem
+{
+public:
+    using QListWidgetItem::QListWidgetItem;
+
+    bool operator<(const QListWidgetItem& other) const override
+    {
+        qint64 t1 = data(kTimeRole).toLongLong();
+        qint64 t2 = other.data(kTimeRole).toLongLong();
+        if (t1 != t2)
+            return t1 < t2;
+
+        // 倒序排的时候，先加进来的要排在前面，所以这里反过来比
+        return data(kOrderRole).toInt() > other.data(kOrderRole).toInt();
+    }
+};
+
 FriendList::FriendList(QWidget* parent) : QWidget(parent)
 {
     initUI();
@@ -116,9 +140,11 @@ void FriendList::initConnect()
 }
 
 void FriendList::addFriendItem(const QString& id, const QPixmap& avatar,
-    const QString& name, const QString& lastMsg)
+    const QString& name, const QString& lastMsg, qint64 lastTime)
 {
-    QListWidgetItem* item = new QListWidgetItem(listWidget);
+    QListWidgetItem* item = new FriendListWidgetItem(listWidget);
+    item->setData(kTimeRole, lastTime);
+    item->setData(kOrderRole, listWidget->count());
     FriendListItem* customWidget = new FriendListItem(id, avatar, name, lastMsg, this);
 
     item->setSizeHint(QSize(listWidget->width(), 65));
@@ -140,17 +166,27 @@ void FriendList::clearSelection()
     currentId.clear();
 }
 
-void FriendList::updateLastMessage(const QString& id, const QString& msg)
+void FriendList::updateLastMessage(const QString& id, const QString& msg, qint64 time)
 {
     for (int i = 0; i < listWidget->count(); ++i) {
-        FriendListItem* item = qobject_cast<FriendListItem*>(
-            listWidget->itemWidget(listWidget->item(i)));
+        QListWidgetItem* item = listWidget->item(i);
+        FriendListItem* widget = qobject_cast<FriendListItem*>(listWidget->itemWidget(item));
 
-        if (item && item->getFriendId() == id) {
-            item->setLastMessage(msg);
+        if (widget && widget->getFriendId() == id) {
+            widget->setLastMessage(msg);
+            item->setData(kTimeRole, time);
+            sortByTime();
             return;
         }
     }
+}
+
+void FriendList::sortByTime()
+{
+    // 用排序来挪位置，不能 takeItem 再 insertItem：
+    // take 出来的那一行，上面的 FriendListItem 会被 Qt 直接销毁，
+    // 头像、红点全得重建。排序时控件会跟着行一起走，选中状态、搜索过滤也都还在
+    listWidget->sortItems(Qt::DescendingOrder);
 }
 
 void FriendList::updateAvatar(const QString& id, const QPixmap& avatar)

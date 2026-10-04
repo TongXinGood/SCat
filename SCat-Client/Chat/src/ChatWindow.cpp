@@ -1,4 +1,5 @@
 #include "../include/ChatWindow.h"
+#include "../include/TextBubble.h"
 #include "../../Other/include/ImageUtils.h"
 #include <QDebug>
 #include <QScrollBar>
@@ -37,7 +38,7 @@ static QString formatChatTime(qint64 ms)
         .arg(day.year()).arg(day.month()).arg(day.day()).arg(clock);
 }
 
-ChatWindow::ChatWindow(QWidget* parent) : QWidget(parent), lastBubbleTime(0)
+ChatWindow::ChatWindow(QWidget* parent) : QWidget(parent), lastBubbleTime(0), emojiPicker(nullptr)
 {
     // 开启 StyledBackground 属性，确保 QWidget 能正常渲染背景色
     this->setAttribute(Qt::WA_StyledBackground, true);
@@ -215,29 +216,9 @@ void ChatWindow::initInput()
 
 QWidget* ChatWindow::createBubbleWidget(const QString& text, bool isSelf)
 {
-    QWidget* widget = new QWidget();
-    widget->setStyleSheet("background-color: transparent;");
-    QHBoxLayout* layout = new QHBoxLayout(widget);
-    layout->setContentsMargins(10, 10, 10, 10);
-
-    QLabel* bubble = new QLabel(text);
-    bubble->setWordWrap(true);
-    bubble->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    bubble->setMaximumWidth(450);
-    QFont font("Microsoft YaHei", 10);
-    bubble->setFont(font);
-
-    if (isSelf) {
-        bubble->setStyleSheet("QLabel { background-color: #20202E; color: #FFFFFF; border-radius: 12px; padding: 12px 16px; }");
-        layout->addStretch();
-        layout->addWidget(bubble);
-    }
-    else {
-        bubble->setStyleSheet("QLabel { background-color: #FFFFFF; color: #000000; border-radius: 12px; padding: 12px 16px; }");
-        layout->addWidget(bubble);
-        layout->addStretch();
-    }
-    return widget;
+    // 文字气泡单独成了一个类：表情要画成图片、复制时还要换回文字，
+    // QLabel 做不到，换成了只读的 QTextEdit
+    return new TextBubble(text, isSelf);
 }
 
 QWidget* ChatWindow::createImageBubbleWidget(const ChatMessage& msg)
@@ -407,7 +388,7 @@ bool ChatWindow::eventFilter(QObject* watched, QEvent* event)
 
 void ChatWindow::onReturnPressed()
 {
-    QString text = msgEdit->toPlainText().trimmed();
+    QString text = msgEdit->messageText().trimmed();
     if (text.isEmpty()) return;
 
     // 这里不再直接画气泡了。消息要先发给服务端、存进本地，
@@ -429,7 +410,20 @@ void ChatWindow::onFileBtnClicked()
 
 void ChatWindow::onMoodBtnClicked()
 {
-    emit sendMoodClicked();
+    // 用到才建。101 个按钮加缩图，放在构造里会拖慢登录后打开主窗口
+    if (!emojiPicker) {
+        emojiPicker = new EmojiPicker(this);
+        connect(emojiPicker, &EmojiPicker::emojiSelected, this, &ChatWindow::onEmojiSelected);
+    }
+
+    emojiPicker->popup(btnmood);
+}
+
+void ChatWindow::onEmojiSelected(const QString& text)
+{
+    // 插在光标处，不是直接发出去 —— 跟 QQ、微信一样，选完还能接着打字
+    msgEdit->insertEmoji(text);
+    msgEdit->setFocus();
 }
 
 void ChatWindow::setChatInfo(const QString& name, const QString& status,

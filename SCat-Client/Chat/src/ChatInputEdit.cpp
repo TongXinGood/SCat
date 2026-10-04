@@ -1,4 +1,6 @@
 #include "../include/ChatInputEdit.h"
+#include "../include/EmojiManager.h"
+#include "../include/EmojiText.h"
 #include "../../Other/include/ImageUtils.h"
 #include <QMimeData>
 #include <QKeyEvent>
@@ -8,6 +10,11 @@
 #include <QHash>
 #include <QUrl>
 #include <QDebug>
+#include <QTextBlock>
+#include <QTextDocument>
+
+static const int kEmojiSize = 20;              // 框里表情的大小，比 14px 的字略大一点
+static const int kEmojiPadding = 1;            // 表情左右各留的空，不然紧贴着前后的字
 
 static const char* kMenuStyle = R"(
     QMenu {
@@ -39,11 +46,125 @@ static const char* kMenuStyle = R"(
 )";
 
 
-ChatInputEdit::ChatInputEdit(QWidget* parent) : QTextEdit(parent)
+ChatInputEdit::ChatInputEdit(QWidget* parent) : QTextEdit(parent), convertPending(false)
 {
     // 只收纯文本。开着富文本的话，从网页复制过来会把字体、颜色一起带进来，
     // 发出去的却只有纯文字，所见非所得
     setAcceptRichText(false);
+
+    // 只在"新增了一步编辑"时扫，撤销、重做不会触发这个信号。
+    // 要是撤销也扫，撤回来的表情文字马上又被换成图片，永远撤不掉
+    connect(document(), &QTextDocument::undoCommandAdded, this, &ChatInputEdit::scheduleConvert);
+}
+
+void ChatInputEdit::insertEmoji(const QString& text)
+{
+    QTextCursor cursor = textCursor();
+
+    // 包成一个编辑块，Ctrl+Z 一下就整个撤掉
+    cursor.beginEditBlock();
+    EmojiText::insert(cursor, text, kEmojiSize, kEmojiPadding);
+    cursor.endEditBlock();
+
+    setTextCursor(cursor);
+    ensureCursorVisible();
+}
+
+QString ChatInputEdit::messageText() const
+{
+    // characterCount 把文档末尾那个看不见的段落符也算进去了，要减掉
+    return EmojiText::toPlainText(document(), 0, document()->characterCount() - 1);
+}
+
+void ChatInputEdit::scheduleConvert()
+{
+    // 不能在信号里直接改文档，那时 Qt 自己还在改的半路上。
+    // 排到事件循环里稍后再扫，连续打字触发多次也只扫一次
+    if (convertPending)
+        return;
+
+    convertPending = true;
+    QMetaObject::invokeMethod(this, &ChatInputEdit::convertEmoji, Qt::QueuedConnection);
+}
+
+void ChatInputEdit::convertEmoji()
+{
+    convertPending = false;
+
+    EmojiManager& em = EmojiManager::GetInstance();
+    QTextDocument* doc = document();
+
+    struct Hit
+    {
+        int pos;
+        int len;
+        QString id;
+    };
+    QList<Hit> hits;
+
+    // 先把所有表情的位置找出来，再统一替换
+    for (QTextBlock block = doc->begin(); block.isValid(); block = block.next()) {
+        for (QTextBlock::iterator it = block.begin(); !it.atEnd(); ++it) {
+            QTextFragment frag = it.fragment();
+            if (!frag.isValid() || frag.charFormat().isImageFormat())
+                continue;
+
+            QString text = frag.text();
+            int i = 0;
+
+            while (i < text.size()) {
+                QString id;
+                int len = em.matchAt(text, i, id);
+
+                if (len > 0) {
+                    hits.append({ frag.position() + i, len, id });
+                    i += len;
+                }
+                else {
+                    ++i;
+                }
+            }
+        }
+    }
+
+    // 平时打字走到这里都是空手而归，只有 Win+. 这类入口才会真的换
+    if (hits.isEmpty())
+        return;
+
+    QTextCursor cursor(doc);
+    cursor.beginEditBlock();
+
+    // 从后往前换：一个表情两三个字符换成一张图只占一格，
+    // 从前往后换的话，后面记下的位置就全错了
+    for (int k = hits.size() - 1; k >= 0; --k) {
+        const Hit& hit = hits.at(k);
+
+        cursor.setPosition(hit.pos);
+        cursor.setPosition(hit.pos + hit.len, QTextCursor::KeepAnchor);
+        cursor.insertImage(EmojiText::imageFormat(hit.id, kEmojiSize, kEmojiPadding));
+    }
+
+    cursor.endEditBlock();
+}
+
+QVariant ChatInputEdit::loadResource(int type, const QUrl& name)
+{
+    if (type == QTextDocument::ImageResource) {
+        QVariant emoji = EmojiText::loadResource(name, kEmojiSize, kEmojiPadding, devicePixelRatioF());
+        if (emoji.isValid())
+            return emoji;
+    }
+
+    return QTextEdit::loadResource(type, name);
+}
+
+QMimeData* ChatInputEdit::createMimeDataFromSelection() const
+{
+    QTextCursor cursor = textCursor();
+
+    QMimeData* mime = new QMimeData();
+    mime->setText(EmojiText::toPlainText(document(), cursor.selectionStart(), cursor.selectionEnd()));
+    return mime;
 }
 
 void ChatInputEdit::keyPressEvent(QKeyEvent* event)
@@ -129,6 +250,13 @@ void ChatInputEdit::insertFromMimeData(const QMimeData* source)
     if (!img.isNull()) {
         emit imagePasted(img);
         return;      // 不调基类，图片就不会被塞进文本框里
+    }
+
+    // 文字自己插，顺手把里面的表情换成图片。交给基类的话，
+    // 光标挨着表情时粘进来的字会沿用图片格式，整段画成图
+    if (source && source->hasText()) {
+        insertEmoji(source->text());
+        return;
     }
 
     QTextEdit::insertFromMimeData(source);

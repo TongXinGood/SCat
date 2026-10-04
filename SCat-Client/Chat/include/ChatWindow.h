@@ -14,6 +14,7 @@
 #include "ChatMessage.h"
 #include "ChatInputEdit.h"
 #include "FileBubble.h"
+#include "EmojiPicker.h"
 
 class ChatWindow : public QWidget
 {
@@ -35,7 +36,6 @@ signals:
     void sendTextMsg(const QString& msg);
     void sendFileClicked();
     void sendImage(const QImage& image);
-    void sendMoodClicked(); // 新增：点击表情按钮的信号
     void fileCancelClicked(const QString& msgid);
     void fileRetryClicked(const QString& msgid, const QString& to,const QString& filePath);
     void fileOpenClicked(const QString& msgid, const QString& filePath);
@@ -47,6 +47,7 @@ private slots:
     void onReturnPressed();
     void onFileBtnClicked();
     void onMoodBtnClicked();
+    void onEmojiSelected(const QString& text);
 
 private:
     void initUi();
@@ -79,6 +80,7 @@ private:
     QPushButton* btnmood; // 改为 QPushButton
     ChatInputEdit* msgEdit;
     QPushButton* btnFile;
+    EmojiPicker* emojiPicker;
 };
 
 #endif // CHATWINDOW_H
