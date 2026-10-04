@@ -2,6 +2,7 @@
 #include <QVBoxLayout>
 #include <QTranslator>
 #include <QStyleHints>
+#include <QFont>
 #include <QLibraryInfo>
 #include <QLabel>
 #include "NoFrame.h"
@@ -50,6 +51,12 @@ int main(int argc, char* argv[])
     QApplication a(argc, argv);
     
     a.styleHints()->setColorScheme(Qt::ColorScheme::Light);
+
+    // 全局字体写死，不跟随对方系统设置：
+    // 英文和数字用 Segoe UI，中文回退到微软雅黑，两者 Win10/11 都自带
+    QFont appFont = a.font();      // 保留系统默认字号，只换字体
+    appFont.setFamilies({ "Segoe UI", "Microsoft YaHei" });
+    a.setFont(appFont);
 
     QCoreApplication::setOrganizationName("SCat");
     QCoreApplication::setApplicationName("SCat-Client");
