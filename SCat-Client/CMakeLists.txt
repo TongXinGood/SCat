@@ -80,6 +80,8 @@ add_executable(SCat-Client
      "Chat/src/TextBubble.cpp"
      "Chat/include/EmojiLabel.h"
      "Chat/src/EmojiLabel.cpp"
+     "Other/include/MessageToast.h"
+     "Other/src/MessageToast.cpp"
       "Scat/include/ScatWindow.h"                                              
       "Scat/src/ScatWindow.cpp"
       "Other/include/ImageUtils.h"

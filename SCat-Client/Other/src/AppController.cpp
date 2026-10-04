@@ -493,12 +493,12 @@ void AppController::onMessageReceived(const ChatMessage& msg)
     scatWin->addChatMessage(msg);
 
     // 窗口不在最前面才弹通知 —— 用户正盯着聊天窗还弹一下很烦。
-    // 通知图标用对方的头像，比系统那个蓝色感叹号好认
+    // 头像取大一点，弹窗里会按屏幕缩放再缩，高分屏上才清楚
     if (!scatWin->isActiveWindow()) {
         notify->showMessage(msg.from,
             scatWin->nicknameOf(msg.from),
             msg.content,
-            QIcon(scatWin->avatarOf(msg.from, 64)));
+            scatWin->avatarOf(msg.from, 128));
     }
 }
 
