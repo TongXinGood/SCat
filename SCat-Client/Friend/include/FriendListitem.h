@@ -23,6 +23,7 @@ public:
     void setLastMessage(const QString& msg);
     void setAvatar(const QPixmap& avatar);
     void setUnread(int count);                  // 0 = 不显示红点
+    void setTime(qint64 time);                  // 最后一条消息的时间（毫秒），0 = 不显示
 
 private:
     void initUI(const QPixmap& avatar, const QString& name, const QString& lastMsg);
@@ -33,6 +34,7 @@ private:
 
     QLabel* lbAvatar;
     QLabel* lbName;
+    QLabel* lbTime;             // 名字右边的时间，像 QQ、微信那样
     EmojiLabel* lbLastMsg;      // 最后一条消息，表情画成 Noto 小图
     QLabel* lbUnread;           // 最右侧的未读数红点
 

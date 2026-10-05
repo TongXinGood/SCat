@@ -52,7 +52,7 @@ void ScatWindow::initUI()
     leftContainer = new QWidget(centralWidget);
     leftContainer->setFixedWidth(240); // 稍微缩窄一点侧边栏，给聊天区留出更多空间
     leftContainer->setAttribute(Qt::WA_StyledBackground, true);
-    leftContainer->setStyleSheet("background-color: #FFFFFF; border-right: 1px solid #EAEAEA;");
+    leftContainer->setStyleSheet("#LeftContainer { background-color: #FFFFFF; }");
 
     leftLayout = new QVBoxLayout(leftContainer);
     leftLayout->setContentsMargins(0, 0, 0, 0);
@@ -104,9 +104,14 @@ void ScatWindow::initUI()
     rightStackedWidget->setCurrentIndex(0);
 
     // ================= 组合并应用到 NoFrame =================
-    mainLayout->addWidget(leftContainer);
-    mainLayout->addWidget(rightStackedWidget, 1);
+    QWidget* divider = new QWidget(centralWidget);
+    divider->setFixedWidth(1);
+    divider->setAttribute(Qt::WA_StyledBackground, true);
+    divider->setStyleSheet("background-color: #EAEAEA;");
 
+    mainLayout->addWidget(leftContainer);
+    mainLayout->addWidget(divider);
+    mainLayout->addWidget(rightStackedWidget, 1);
     // 核心步骤：将组装好的 centralWidget 交给父类 NoFrame 渲染
     this->setMainWindow(centralWidget);
 }

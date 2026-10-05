@@ -113,10 +113,10 @@ void FriendList::initUI()
         "   outline: none;"
         "}"
         "QListWidget::item {"
-        "   border-bottom: 1px solid #F0F0F0;"
+        "   border: none;"
         "}"
         "QListWidget::item:hover {"
-        "   background-color: #F8F9FA;"
+        "   background-color: #F7F6FA;"
         "}"
         "QListWidget::item:selected {"
         "   background-color: #EFEBFA;"
@@ -146,6 +146,7 @@ void FriendList::addFriendItem(const QString& id, const QPixmap& avatar,
     item->setData(kTimeRole, lastTime);
     item->setData(kOrderRole, listWidget->count());
     FriendListItem* customWidget = new FriendListItem(id, avatar, name, lastMsg, this);
+    customWidget->setTime(lastTime);
 
     item->setSizeHint(QSize(listWidget->width(), 65));
     listWidget->setItemWidget(item, customWidget);
@@ -174,6 +175,7 @@ void FriendList::updateLastMessage(const QString& id, const QString& msg, qint64
 
         if (widget && widget->getFriendId() == id) {
             widget->setLastMessage(msg);
+            widget->setTime(time);
             item->setData(kTimeRole, time);
             sortByTime();
             return;
