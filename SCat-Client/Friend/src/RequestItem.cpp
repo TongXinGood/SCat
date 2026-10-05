@@ -1,4 +1,5 @@
 #include "../include/RequestItem.h"
+#include "../../Other/include/Theme.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 
@@ -57,9 +58,8 @@ void RequestItem::initUI(const QString& nickname, const QPixmap& avatar)
     mainLayout->addWidget(btnAccept);
     mainLayout->addWidget(btnReject);
 
-    this->setStyleSheet(R"(
+    this->setStyleSheet(Theme::css(R"(
         #RequestItem { background-color: transparent; }
-
         #ReqAvatar {
             background: transparent;
             border: none;
@@ -85,10 +85,10 @@ void RequestItem::initUI(const QString& nickname, const QPixmap& avatar)
         }
         #BtnReject:hover { background-color: #E4E4E4; }
 
-        #BtnAccept:disabled, #BtnReject:disabled {
+       #BtnAccept:disabled, #BtnReject:disabled {
             background-color: #EDEDED; color: #AAAAAA;
         }
-    )");
+    )"));
 
     // 按钮点了就把 username 带出去，上层不用再去问"是哪一行"
     connect(btnAccept, &QPushButton::clicked, this, [this]() {

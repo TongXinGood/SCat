@@ -1,6 +1,7 @@
 #include "../include/RequestWindow.h"
 #include "../include/RequestItem.h"
 #include "../../Other/include/AvatarUtils.h"  
+#include "../../Other/include/Theme.h"
 #include <QJsonObject>
 #include <QDebug>
 
@@ -59,7 +60,7 @@ void RequestWindow::initUI()
 
     this->setMainWindow(content);
 
-    content->setStyleSheet(R"(
+    content->setStyleSheet(Theme::css(R"(
         #RequestContent { background-color: #FFFFFF; }
 
         #ReqEmpty {
@@ -77,7 +78,7 @@ void RequestWindow::initUI()
         QListWidget::item:hover, QListWidget::item:selected {
             background-color: transparent;
         }
-    )");
+    )"));
 }
 
 void RequestWindow::refreshEmptyHint()

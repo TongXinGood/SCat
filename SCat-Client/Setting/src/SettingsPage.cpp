@@ -286,7 +286,7 @@ void SettingsPage::initUI()
 
     // 全部样式集中在这里，每条都带类型 + ID 选择器。
     // 卡片设了 border，子控件会继承，所以每个子控件都要显式 border: none 盖掉
-    this->setStyleSheet(R"(
+    this->setStyleSheet(Theme::css(R"(
         QWidget#SettingsPage    { background-color: #F2F0F5; }
         QWidget#SettingsHeader  { background-color: #FFFFFF; }
         QWidget#HeaderLine      { background-color: #E6E3EC; }
@@ -371,7 +371,21 @@ void SettingsPage::initUI()
         QPushButton#BtnGhost:hover    { background-color: #E7E1F5; }
         QPushButton#BtnGhost:pressed  { background-color: #DCD4F0; }
         QPushButton#BtnGhost:disabled { background-color: #F7F7F9; color: #BBBBBB; }
-    )");
+
+        QScrollBar:vertical {
+            background: transparent;
+            width: 10px;
+            margin: 4px 4px 4px 0px;
+        }
+        QScrollBar::handle:vertical {
+            background-color: #DCD6E6;
+            border-radius: 3px;
+            min-height: 30px;
+        }
+        QScrollBar::handle:vertical:hover { background-color: #C9C1D8; }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
+    )"));
 }
 
 void SettingsPage::initConnect()

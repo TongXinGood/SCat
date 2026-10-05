@@ -1,5 +1,6 @@
 #include "../include/MessageToast.h"
 #include "../include/AvatarUtils.h"
+#include "../include/Theme.h"
 #include "../../Chat/include/EmojiLabel.h"
 #include <QLabel>
 #include <QPushButton>
@@ -74,12 +75,13 @@ void MessageToast::initUi()
     card->setObjectName("ToastCard");
     card->setFixedWidth(kCardWidth);
     card->setCursor(Qt::PointingHandCursor);
-    card->setStyleSheet(kToastStyle);
+    card->setStyleSheet(Theme::css(kToastStyle));
 
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(card);
     shadow->setBlurRadius(28);
     shadow->setOffset(0, 6);
-    shadow->setColor(QColor(32, 32, 46, 50));
+    // 深色底上淡阴影看不出来，换成更深更浓的黑
+    shadow->setColor(Theme::isDark() ? QColor(0, 0, 0, 130) : QColor(32, 32, 46, 50));
     card->setGraphicsEffect(shadow);
 
     outer->addWidget(card);

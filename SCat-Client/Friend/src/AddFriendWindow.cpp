@@ -1,5 +1,6 @@
 ﻿#include "../include/AddFriendWindow.h"
 #include "../../Other/include/AvatarUtils.h"
+#include "../../Other/include/Theme.h"
 #include <QDebug>
 
 AddFriendWindow::AddFriendWindow(QWidget* parent) : NoFrame(parent)
@@ -53,7 +54,7 @@ void AddFriendWindow::initUI()
     lbSearchIcon->setObjectName("SearchIcon");
     lbSearchIcon->setFixedSize(18, 18);
     lbSearchIcon->setScaledContents(true);
-    lbSearchIcon->setPixmap(QPixmap(":/Resource/icon/search.png"));
+    lbSearchIcon->setPixmap(Theme::pixmap(":/Resource/icon/search.png", QColor("#8E8A9C")));
 
     editSearch = new QLineEdit(searchContainer);
     editSearch->setObjectName("SearchEdit");
@@ -177,7 +178,7 @@ void AddFriendWindow::initUI()
         }
     )";
 
-    content->setStyleSheet(qss);
+    content->setStyleSheet(Theme::css(qss));
 }
 
 void AddFriendWindow::initConnect()
