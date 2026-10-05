@@ -1,6 +1,7 @@
 #include "../include/ChatWindow.h"
 #include "../include/TextBubble.h"
 #include "../../Other/include/ImageUtils.h"
+#include "../../Other/include/Theme.h"
 #include <QDebug>
 #include <QScrollBar>
 #include <QAbstractItemView>
@@ -45,7 +46,7 @@ ChatWindow::ChatWindow(QWidget* parent) : QWidget(parent), lastBubbleTime(0), em
 
     // 设置全局对象名和背景色（淡紫色）
     this->setObjectName("ChatWindow");
-    this->setStyleSheet("QWidget#ChatWindow { background-color: #F2F0F5; }");
+    this->setStyleSheet(Theme::css("QWidget#ChatWindow { background-color: #F2F0F5; }"));
 
     initUi();
 }
@@ -67,7 +68,7 @@ void ChatWindow::initUi()
     // 2. 分割线
     QWidget* line = new QWidget(this);
     line->setFixedHeight(1);
-    line->setStyleSheet("background-color: #E0E0E0;");
+    line->setStyleSheet(Theme::css("background-color: #E0E0E0;"));
     mainLayout->addWidget(line);
 
     // 3. 中间消息列表 (淡紫色背景)
@@ -84,7 +85,7 @@ void ChatWindow::initHeader()
     headerWidget = new QWidget(this);
     headerWidget->setFixedHeight(64);
     headerWidget->setAttribute(Qt::WA_StyledBackground, true);
-    headerWidget->setStyleSheet("background-color: #FFFFFF;");
+    headerWidget->setStyleSheet(Theme::css("background-color: #FFFFFF;"));
 
     QHBoxLayout* headerLayout = new QHBoxLayout(headerWidget);
     headerLayout->setContentsMargins(20, 8, 20, 8);
@@ -100,10 +101,10 @@ void ChatWindow::initHeader()
     infoLayout->setContentsMargins(0, 0, 0, 0);
 
     lbName = new QLabel("Helena Hills", headerWidget);
-    lbName->setStyleSheet("font-size: 16px; font-weight: bold; color: #333333; border: none; background: transparent;");
+    lbName->setStyleSheet(Theme::css("font-size: 16px; font-weight: bold; color: #333333; border: none; background: transparent;"));
 
     lbStatus = new QLabel("Active 20m ago", headerWidget);
-    lbStatus->setStyleSheet("font-size: 12px; color: #999999; border: none; background: transparent;");
+    lbStatus->setStyleSheet(Theme::css("font-size: 12px; color: #999999; border: none; background: transparent;"));
 
     infoLayout->addStretch();
     infoLayout->addWidget(lbName);
@@ -125,7 +126,9 @@ void ChatWindow::initHeader()
 void ChatWindow::initMsgList()
 {
     msgList = new QListWidget(this);
-    msgList->setStyleSheet(
+    // 滚动条跟表情面板一样：细细一条、圆角，不要系统那种带上下箭头的粗条。
+    // 宽 10px，右边留 4px 空，真正看得见的只有 6px
+    msgList->setStyleSheet(Theme::css(
         "QListWidget {"
         "   background-color: transparent;"
         "   border: none;"
@@ -138,7 +141,20 @@ void ChatWindow::initMsgList()
         "QListWidget::item:selected, QListWidget::item:hover {"
         "   background-color: transparent;"
         "}"
-    );
+        "QScrollBar:vertical {"
+        "   background: transparent;"
+        "   width: 10px;"
+        "   margin: 4px 4px 4px 0px;"
+        "}"
+        "QScrollBar::handle:vertical {"
+        "   background-color: #DCD6E6;"
+        "   border-radius: 3px;"
+        "   min-height: 30px;"
+        "}"
+        "QScrollBar::handle:vertical:hover { background-color: #C9C1D8; }"
+        "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }"
+        "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }"
+    ));
     msgList->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     msgList->setSelectionMode(QAbstractItemView::NoSelection);
     msgList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -158,13 +174,13 @@ void ChatWindow::initInput()
     inputContainer->setFixedHeight(50);
     inputContainer->setAttribute(Qt::WA_StyledBackground, true);
     inputContainer->setObjectName("InputBar");
-    inputContainer->setStyleSheet(
+    inputContainer->setStyleSheet(Theme::css(
         "#InputBar { "
         "   background-color: #FFFFFF; "
         "   border-radius: 25px; "
         "   border: 1px solid #E5E5E5; "
         "}"
-    );
+    ));
 
     QHBoxLayout* inputLayout = new QHBoxLayout(inputContainer);
     inputLayout->setContentsMargins(20, 5, 15, 5);
@@ -175,7 +191,7 @@ void ChatWindow::initInput()
     msgEdit->setPlaceholderText("Enter your message");
     msgEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     msgEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    msgEdit->setStyleSheet(
+    msgEdit->setStyleSheet(Theme::css(
         "QTextEdit {"
         "   border: none;"
         "   background: transparent;"
@@ -183,7 +199,7 @@ void ChatWindow::initInput()
         "   color: #333;"
         "   padding-top: 6px;"
         "}"
-    );
+    ));
     msgEdit->setFixedHeight(40);
     connect(msgEdit, &ChatInputEdit::sendPressed, this, &ChatWindow::onReturnPressed);
     connect(msgEdit, &ChatInputEdit::imagePasted, this, &ChatWindow::sendImage);
@@ -192,17 +208,17 @@ void ChatWindow::initInput()
     btnmood = new QPushButton(inputContainer);
     btnmood->setFixedSize(24, 24);
     btnmood->setCursor(Qt::PointingHandCursor); // 显式设置鼠标手型
-    btnmood->setIcon(QIcon(":/Resource/icon/mood.png"));
+    btnmood->setIcon(Theme::icon(":/Resource/icon/mood.png"));
     btnmood->setIconSize(QSize(22, 22)); // 图标稍微小一点点，留点呼吸感
-    btnmood->setStyleSheet("QPushButton { border: none; background: transparent; } QPushButton:hover { background: #F5F5F5; border-radius: 12px; }");
+    btnmood->setStyleSheet(Theme::css("QPushButton { border: none; background: transparent; } QPushButton:hover { background: #F5F5F5; border-radius: 12px; }"));
 
     // 3. 文件按钮
     btnFile = new QPushButton(inputContainer);
     btnFile->setFixedSize(24, 24);
     btnFile->setCursor(Qt::PointingHandCursor); // 显式设置鼠标手型
-    btnFile->setIcon(QIcon(":/Resource/icon/folder.png"));
+    btnFile->setIcon(Theme::icon(":/Resource/icon/folder.png"));
     btnFile->setIconSize(QSize(20, 20));
-    btnFile->setStyleSheet("QPushButton { border: none; background: transparent; } QPushButton:hover { background: #F5F5F5; border-radius: 12px; }");
+    btnFile->setStyleSheet(Theme::css("QPushButton { border: none; background: transparent; } QPushButton:hover { background: #F5F5F5; border-radius: 12px; }"));
 
     inputLayout->addWidget(msgEdit);
     inputLayout->addWidget(btnmood);
@@ -237,8 +253,8 @@ QWidget* ChatWindow::createImageBubbleWidget(const ChatMessage& msg)
         // 文件没了（用户手动删的，或者换数据目录时漏拷了），
         // 退化成一个文字气泡，别留一块空白让人莫名其妙
         bubble->setText("[图片已失效]");
-        bubble->setStyleSheet("QLabel { background-color: #FFFFFF; color: #999999; "
-            "border-radius: 12px; padding: 12px 16px; }");
+        bubble->setStyleSheet(Theme::css("QLabel { background-color: #FFFFFF; color: #999999; "
+            "border-radius: 12px; padding: 12px 16px; }"));
     }
     else {
         // 宽高是存库时记下来的，这里不用解码整张图就能定尺寸
@@ -320,7 +336,7 @@ QWidget* ChatWindow::createTimeWidget(qint64 time)
 
     // 底色取聊天区背景 #F2F0F5 的同色系加深一档，
     // 比纯灰更搭，也不会跟白色气泡抢眼
-    label->setStyleSheet(
+    label->setStyleSheet(Theme::css(
         "QLabel#TimeTip {"
         "   background-color: #E6E2EE;"
         "   color: #7E7A8C;"
@@ -328,7 +344,7 @@ QWidget* ChatWindow::createTimeWidget(qint64 time)
         "   border-radius: 9px;"
         "   padding: 3px 10px;"
         "}"
-    );
+    ));
 
     layout->addStretch();
     layout->addWidget(label);

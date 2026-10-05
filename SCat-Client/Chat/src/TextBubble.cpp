@@ -1,5 +1,6 @@
 #include "../include/TextBubble.h"
 #include "../include/EmojiText.h"
+#include "../../Other/include/Theme.h"
 #include <QHBoxLayout>
 #include <QFrame>
 #include <QMenu>
@@ -139,14 +140,14 @@ void TextBubble::initUi(const QString& text, bool isSelf)
     // 配色跟原来的 QLabel 气泡一致，另外配了选中文字时的底色：
     // 深色气泡上默认的蓝色选区太扎眼，换成同色系
     if (isSelf) {
-        card->setStyleSheet("QFrame#BubbleCard { background-color: #20202E; border-radius: 12px; }");
-        view->setStyleSheet("QTextEdit { background: transparent; color: #FFFFFF;"
-            " selection-background-color: #4A4A66; selection-color: #FFFFFF; }");
+        card->setStyleSheet(Theme::css("QFrame#BubbleCard { background-color: #20202E; border-radius: 12px; }"));
+        view->setStyleSheet(Theme::css("QTextEdit { background: transparent; color: #FFFFFF;"
+            " selection-background-color: #4A4A66; selection-color: #FFFFFF; }"));
     }
     else {
-        card->setStyleSheet("QFrame#BubbleCard { background-color: #FFFFFF; border-radius: 12px; }");
-        view->setStyleSheet("QTextEdit { background: transparent; color: #000000;"
-            " selection-background-color: #DCD4F0; selection-color: #000000; }");
+        card->setStyleSheet(Theme::css("QFrame#BubbleCard { background-color: #FFFFFF; border-radius: 12px; }"));
+        view->setStyleSheet(Theme::css("QTextEdit { background: transparent; color: #000000;"
+            " selection-background-color: #DCD4F0; selection-color: #000000; }"));
     }
 
     // 字体和样式都设好了再填内容，量出来的大小才准

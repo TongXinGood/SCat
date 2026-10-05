@@ -1,5 +1,6 @@
 #include "../include/EmojiPicker.h"
 #include "../../Other/include/UserSession.h"
+#include "../../Other/include/Theme.h"
 #include <QVBoxLayout>
 #include <QGridLayout>
 #include <QLabel>
@@ -17,7 +18,7 @@ static const int kShadow = 12;       // 卡片外留给阴影的透明边距
 static const int kAnchorGap = 6;     // 卡片底边跟表情按钮之间的空隙
 static const int kRecentMax = 8;     // 最近使用最多记几个，正好一行
 
-// 配色跟右键菜单、文件气泡是一套：白底、浅紫边框、悬停浅紫
+// 配色跟右键菜单、文件气泡是一套：白底、浅紫边框、悬停浅紫    
 static const char* kPickerStyle = R"(
     QWidget#EmojiCard {
         background-color: #FFFFFF;
@@ -79,13 +80,13 @@ void EmojiPicker::initUi()
     card = new QWidget(this);
     card->setObjectName("EmojiCard");
     card->setAttribute(Qt::WA_StyledBackground, true);
-    card->setStyleSheet(kPickerStyle);
+    card->setStyleSheet(Theme::css(kPickerStyle));
 
     // 阴影很淡，只是让面板从聊天背景上"浮"起来一点
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(card);
     shadow->setBlurRadius(24);
     shadow->setOffset(0, 4);
-    shadow->setColor(QColor(32, 32, 46, 40));
+    shadow->setColor(Theme::isDark() ? QColor(0, 0, 0, 120) : QColor(32, 32, 46, 40));
     card->setGraphicsEffect(shadow);
 
     outer->addWidget(card);

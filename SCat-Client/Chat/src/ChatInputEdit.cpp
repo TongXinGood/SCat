@@ -2,6 +2,7 @@
 #include "../include/EmojiManager.h"
 #include "../include/EmojiText.h"
 #include "../../Other/include/ImageUtils.h"
+#include "../../Other/include/Theme.h"
 #include <QMimeData>
 #include <QKeyEvent>
 #include <QContextMenuEvent>
@@ -277,7 +278,7 @@ void ChatInputEdit::contextMenuEvent(QContextMenuEvent* event)
     menu->setWindowFlags(menu->windowFlags()
         | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
 
-    menu->setStyleSheet(kMenuStyle);
+    menu->setStyleSheet(Theme::css(kMenuStyle));
 
     // Qt 给每个标准动作都起了 objectName，按它翻译最稳 ——
     // 按文字匹配会被 Qt 的翻译影响，按顺序匹配会被动作的增减打乱

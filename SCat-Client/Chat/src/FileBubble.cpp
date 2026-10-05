@@ -1,4 +1,5 @@
 #include "../include/FileBubble.h"
+#include "../../Other/include/Theme.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QFontMetrics>
@@ -68,7 +69,7 @@ void FileBubble::initUI()
     lbIcon = new QLabel(top);
     lbIcon->setObjectName("FileIcon");
     lbIcon->setFixedSize(36, 36);
-    lbIcon->setPixmap(QPixmap(":/Resource/icon/folder.png")
+    lbIcon->setPixmap(Theme::pixmap(":/Resource/icon/folder.png")
         .scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     lbIcon->setAlignment(Qt::AlignCenter);
 
@@ -122,7 +123,7 @@ void FileBubble::initUI()
 
     connect(btnAction, &QPushButton::clicked, this, &FileBubble::onActionClicked);
 
-    card->setStyleSheet(R"(
+    card->setStyleSheet(Theme::css(R"(
         QWidget#FileCard {
             background-color: #FFFFFF;
             border: 1px solid #ECE9F2;
@@ -157,11 +158,11 @@ void FileBubble::initUI()
             border-bottom-left-radius: 12px;
             border-bottom-right-radius: 12px;
         }
-        QProgressBar#FileBar::chunk {
+                QProgressBar#FileBar::chunk {
             background-color: #20202E;
             border-bottom-left-radius: 12px;
         }
-    )");
+    )"));
 }
 
 void FileBubble::setProgress(qint64 done, qint64 total)
