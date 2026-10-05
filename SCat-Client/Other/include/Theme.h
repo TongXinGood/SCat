@@ -3,6 +3,8 @@
 
 #include <QString>
 #include <QColor>
+#include <QPixmap>
+#include <QIcon>
 
 // 浅色 / 深色主题。全项目的颜色还是照常写浅色的，
 // 设样式表的时候过一道 Theme::css()，深色模式下自动换成对应的深色。
@@ -31,6 +33,12 @@ namespace Theme
     // 代码里直接画的颜色（QPainter、QColor）用这两个换，规则跟 css 一样
     QColor bg(const QColor& light);
     QColor text(const QColor& light);
+
+    // 单色图标（灰色、黑色的线条图标）。浅色模式原样读出来；
+    // 深色模式下把图标染成 darkColor，不然深色底上看不清。
+    // 有的图标自带白底，染色时白底会变透明
+    QPixmap pixmap(const QString& path, const QColor& darkColor = QColor("#B8B5C4"));
+    QIcon icon(const QString& path, const QColor& darkColor = QColor("#B8B5C4"));
 }
 
 #endif // THEME_H

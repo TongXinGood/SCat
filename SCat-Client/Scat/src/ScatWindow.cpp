@@ -1,5 +1,6 @@
 ﻿#include "../include/ScatWindow.h"
 #include "../../Other/include/AvatarUtils.h"
+#include "../../Other/include/Theme.h"
 #include <QPixmap>
 
 ScatWindow::ScatWindow(QWidget* parent) : NoFrame(parent)
@@ -42,7 +43,7 @@ void ScatWindow::initUI()
     // 1. 实例化主内容容器
     centralWidget = new QWidget(this);
     centralWidget->setObjectName("ScatCentralWidget");
-    centralWidget->setStyleSheet("#ScatCentralWidget { background-color: #FFFFFF; }");
+    centralWidget->setStyleSheet(Theme::css("#ScatCentralWidget { background-color: #FFFFFF; }"));
 
     mainLayout = new QHBoxLayout(centralWidget);
     mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -52,7 +53,7 @@ void ScatWindow::initUI()
     leftContainer = new QWidget(centralWidget);
     leftContainer->setFixedWidth(240); // 稍微缩窄一点侧边栏，给聊天区留出更多空间
     leftContainer->setAttribute(Qt::WA_StyledBackground, true);
-    leftContainer->setStyleSheet("#LeftContainer { background-color: #FFFFFF; }");
+    leftContainer->setStyleSheet(Theme::css("#LeftContainer { background-color: #FFFFFF; }"));
 
     leftLayout = new QVBoxLayout(leftContainer);
     leftLayout->setContentsMargins(0, 0, 0, 0);
@@ -68,12 +69,12 @@ void ScatWindow::initUI()
     btnNotify = new NotifyButton(leftContainer);
     btnNotify->setObjectName("BtnNotify");
     btnNotify->setFixedSize(56, 56);
-    btnNotify->setIcon(QIcon(":/Resource/icon/notifications.png"));
+    btnNotify->setIcon(Theme::icon(":/Resource/icon/notifications.png"));
     btnNotify->setIconSize(QSize(26, 26));
-    btnNotify->setStyleSheet(
+    btnNotify->setStyleSheet(Theme::css(
         "#BtnNotify { background-color: #EFEBFA; border: none; border-radius: 28px; }"
         "#BtnNotify:hover { background-color: #E4DCF7; }"
-    );
+    ));
     btnNotify->raise();      // 确保盖在列表上面
 
     // leftContainer 的高度会跟着窗口缩放变，装个事件过滤器盯着它的 resize，
@@ -88,7 +89,7 @@ void ScatWindow::initUI()
     // 页面 0: 没选中好友时的空白页。原来这里铺了一张背景图，
     // 现在留纯白，跟左侧栏之间靠那条 1px 的分割线区分
     defaultPage = new QWidget();
-    defaultPage->setStyleSheet("background-color: #FFFFFF;");
+    defaultPage->setStyleSheet(Theme::css("background-color: #FFFFFF;"));
 
     // 页面 1: 聊天窗口
     chatWindow = new ChatWindow();
@@ -107,7 +108,7 @@ void ScatWindow::initUI()
     QWidget* divider = new QWidget(centralWidget);
     divider->setFixedWidth(1);
     divider->setAttribute(Qt::WA_StyledBackground, true);
-    divider->setStyleSheet("background-color: #EAEAEA;");
+    divider->setStyleSheet(Theme::css("background-color: #EAEAEA;"));
 
     mainLayout->addWidget(leftContainer);
     mainLayout->addWidget(divider);
@@ -131,22 +132,22 @@ void ScatWindow::initProfileSection()
     lbMyAvatar->setFixedSize(50, 50);
     lbMyAvatar->setScaledContents(true);
     lbMyAvatar->setPixmap(QPixmap(":/Resource/icon/head.png")); // 记得添加实际资源
-    lbMyAvatar->setStyleSheet("border-radius: 25px; border: 1px solid #E0E0E0;");
+    lbMyAvatar->setStyleSheet(Theme::css("border-radius: 25px; border: 1px solid #E0E0E0;"));
 
     // 2. 个人名字
     lbMyName = new QLabel("Name", profileWidget);
-    lbMyName->setStyleSheet("font-size: 18px; font-weight: bold; color: #1A1A1A; border: none;");
+    lbMyName->setStyleSheet(Theme::css("font-size: 18px; font-weight: bold; color: #1A1A1A; border: none;"));
 
     // 3. 设置按钮
     btnSettings = new QPushButton(profileWidget);
     btnSettings->setFixedSize(24, 24);
     btnSettings->setCursor(Qt::PointingHandCursor);
-    btnSettings->setIcon(QIcon(":/Resource/icon/settings.png")); // 记得添加实际资源
+    btnSettings->setIcon(Theme::icon(":/Resource/icon/settings.png", QColor("#9C98AA")));
     btnSettings->setIconSize(QSize(20, 20));
-    btnSettings->setStyleSheet(
+    btnSettings->setStyleSheet(Theme::css(
         "QPushButton { border: none; background: transparent; }"
         "QPushButton:hover { background-color: #F0F0F0; border-radius: 12px; }"
-    );
+    ));
 
     profileLayout->addWidget(lbMyAvatar);
     profileLayout->addWidget(lbMyName);

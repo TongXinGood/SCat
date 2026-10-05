@@ -1,5 +1,6 @@
 ﻿#include "../include/FriendList.h"
 #include "../include/FriendListitem.h"
+#include "../../Other/include/Theme.h"
 #include <QIcon>
 #include <QCursor>
 
@@ -48,13 +49,13 @@ void FriendList::initUI()
     searchContainer->setFixedHeight(40);
     searchContainer->setAttribute(Qt::WA_StyledBackground, true);
     searchContainer->setObjectName("SearchContainer");
-    searchContainer->setStyleSheet(
+    searchContainer->setStyleSheet(Theme::css(
         "#SearchContainer { "
         "   background-color: #FFFFFF; "
         "   border-radius: 6px; "
         "   border: 1px solid #E5E5E5; "
         "}"
-    );
+    ));
 
     searchLayout = new QHBoxLayout(searchContainer);
     searchLayout->setContentsMargins(10, 0, 10, 0);
@@ -63,26 +64,26 @@ void FriendList::initUI()
     lbSearchIcon = new QLabel(searchContainer);
     lbSearchIcon->setFixedSize(18, 18);
     lbSearchIcon->setScaledContents(true);
-    lbSearchIcon->setPixmap(QPixmap(":/Resource/icon/search.png"));
+    lbSearchIcon->setPixmap(Theme::pixmap(":/Resource/icon/search.png", QColor("#8E8A9C")));
     lbSearchIcon->setStyleSheet("border: none; background: transparent;");
 
     editSearch = new QLineEdit(searchContainer);
     editSearch->setPlaceholderText("Search chats");
-    editSearch->setStyleSheet(
+    editSearch->setStyleSheet(Theme::css(
         "QLineEdit {"
         "   border: none;"
         "   background: transparent;"
         "   font-size: 13px;"
         "   color: #333333;"
         "}"
-    );
+    ));
 
     btnAdd = new QPushButton(searchContainer);
     btnAdd->setFixedSize(24, 24);
     btnAdd->setCursor(Qt::PointingHandCursor);
-    btnAdd->setIcon(QIcon(":/Resource/icon/add.png"));
+    btnAdd->setIcon(Theme::icon(":/Resource/icon/add.png", QColor("#9C98AA")));
     btnAdd->setIconSize(QSize(17, 17));
-    btnAdd->setStyleSheet(
+    btnAdd->setStyleSheet(Theme::css(
         "QPushButton { "
         "   border: none; "
         "   background: transparent; "
@@ -91,7 +92,7 @@ void FriendList::initUI()
         "   background: #F5F5F5; "
         "   border-radius: 12px; "
         "}"
-    );
+    ));
 
     searchLayout->addWidget(lbSearchIcon);
     searchLayout->addWidget(editSearch);
@@ -106,7 +107,7 @@ void FriendList::initUI()
     listWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     listWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    listWidget->setStyleSheet(
+    listWidget->setStyleSheet(Theme::css(
         "QListWidget {"
         "   background-color: transparent;"
         "   border: none;"
@@ -122,7 +123,7 @@ void FriendList::initUI()
         "   background-color: #EFEBFA;"
         "   border: none;"
         "}"
-    );
+    ));
     QHBoxLayout* searchRow = new QHBoxLayout();
     searchRow->setContentsMargins(10, 0, 10, 0);
     searchRow->setSpacing(0);

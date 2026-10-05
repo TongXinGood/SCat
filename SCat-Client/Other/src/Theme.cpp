@@ -6,6 +6,7 @@
 #include <QHash>
 #include <QRegularExpression>
 #include <QDebug>
+#include <QImage>
 
 namespace Theme
 {
@@ -226,5 +227,44 @@ namespace Theme
     QColor text(const QColor& light)
     {
         return mapColor(light, true);
+    }
+    QPixmap pixmap(const QString& path, const QColor& darkColor)
+    {
+        if (!dark)
+            return QPixmap(path);
+
+        QImage img = QImage(path).convertToFormat(QImage::Format_ARGB32);
+
+        // 先找出图标里最深的那个灰度，染色时把它当成"完全不透明"。
+        // 项目里的图标有的是中灰（130）画的，直接按黑色算会染得很淡
+        int darkest = 255;
+        for (int y = 0; y < img.height(); ++y) {
+            const QRgb* line = reinterpret_cast<const QRgb*>(img.constScanLine(y));
+            for (int x = 0; x < img.width(); ++x) {
+                if (qAlpha(line[x]) > 128)
+                    darkest = qMin(darkest, qGray(line[x]));
+            }
+        }
+        int range = qMax(1, 255 - darkest);
+
+        // 越深的地方越不透明，白色（包括自带的白底）变透明
+        for (int y = 0; y < img.height(); ++y) {
+            QRgb* line = reinterpret_cast<QRgb*>(img.scanLine(y));
+            for (int x = 0; x < img.width(); ++x) {
+                int depth = qMin(255, (255 - qGray(line[x])) * 255 / range);
+                int alpha = qAlpha(line[x]) * depth / 255;
+                line[x] = qRgba(darkColor.red(), darkColor.green(), darkColor.blue(), alpha);
+            }
+        }
+
+        return QPixmap::fromImage(img);
+    }
+
+    QIcon icon(const QString& path, const QColor& darkColor)
+    {
+        if (!dark)
+            return QIcon(path);
+
+        return QIcon(pixmap(path, darkColor));
     }
 }

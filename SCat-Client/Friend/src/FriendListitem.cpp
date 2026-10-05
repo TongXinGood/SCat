@@ -1,4 +1,5 @@
 #include "../include/FriendListitem.h"
+#include "../../Other/include/Theme.h"
 #include <QFontMetrics>
 #include <QDateTime>
 
@@ -102,7 +103,7 @@ void FriendListItem::initUI(const QPixmap& avatar, const QString& name, const QS
     mainLayout->addWidget(lbAvatar);
     mainLayout->addLayout(textLayout, 1);
 
-    this->setStyleSheet(R"(
+    this->setStyleSheet(Theme::css(R"(
         #FriendItem   { background-color: transparent; }
         #ItemAvatar   { background: transparent; border: none; }
         #ItemName {
@@ -121,10 +122,10 @@ void FriendListItem::initUI(const QPixmap& avatar, const QString& name, const QS
             color: #FFFFFF;
             border: none;
             border-radius: 9px;
-            font-size: 11px;
+              font-size: 11px;
             font-weight: bold;
         }
-    )");
+    )"));
 }
 
 QString FriendListItem::getFriendId() const
