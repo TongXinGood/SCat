@@ -65,6 +65,7 @@ signals:
     void sendChangeAvatar(const QString& filePath);
     void sendSaveNickname(const QString& nickname);
     void sendChangeStorage(const QString& dir);
+    void sendRestartApp();
 private slots:
     void onFriendSelected(const QString& friendId, const QString& friendName);
     void onSettingsClicked();

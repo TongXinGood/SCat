@@ -6,6 +6,8 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QButtonGroup>
+#include "../../Other/include/Theme.h"
 
 // 设置页。嵌在 ScatWindow 右侧的 QStackedWidget 里，
 // 跟聊天页是平级的一页，不是弹窗
@@ -30,11 +32,13 @@ signals:
     void sendChangeAvatar(const QString& filePath);  // 用户选好了图片文件
     void sendSaveNickname(const QString& nickname);
     void sendChangeStorage(const QString& dir);      // 用户选好了新目录
+    void sendRestartApp();                           // 换了主题，用户点了"立即重启"
 
 private slots:
     void onAvatarBtnClicked();
     void onSaveNicknameClicked();
     void onChangeStorageClicked();
+    void onThemeClicked(int id);
 
 private:
     void initUI();
@@ -42,6 +46,7 @@ private:
 
     QWidget* createCard();                           // 统一的白色圆角卡片
     QWidget* createRow(const QString& title, QWidget* right);   // 一行：左标题右内容
+    QWidget* createThemeCard();                      // 外观卡片：浅色 / 深色 / 跟随系统
 
 private:
     // 顶栏
@@ -62,6 +67,13 @@ private:
     QPushButton* btnChangeStorage;
 
     QString fullStoragePath;    // 完整路径，界面上显示的是省略版
+
+    // 外观卡片
+    QButtonGroup* themeGroup;
+    QWidget* restartRow;        // 选了跟启动时不一样的主题才出现
+    QLabel* lbRestart;
+    QPushButton* btnRestart;
+    Theme::Mode startupMode;    // 这次启动时用的主题，选回它提示条就消失
 };
 
 #endif // SETTINGSPAGE_H

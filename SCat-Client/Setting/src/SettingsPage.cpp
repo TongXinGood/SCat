@@ -1,6 +1,7 @@
 #include "../include/SettingsPage.h"
 #include "../../Other/include/AppPath.h"
 #include "../../Other/include/AvatarUtils.h"
+#include "../include/ThemeOption.h"
 #include <QHBoxLayout>
 #include <QScrollArea>
 #include <QFileDialog>
@@ -8,7 +9,7 @@
 #include <QFontMetrics>
 #include <QDebug>
 
-SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent)
+SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent), startupMode(Theme::mode())
 {
     this->setAttribute(Qt::WA_StyledBackground, true);
     this->setObjectName("SettingsPage");
@@ -29,6 +30,71 @@ QWidget* SettingsPage::createCard()
     QWidget* card = new QWidget();
     card->setObjectName("Card");
     card->setAttribute(Qt::WA_StyledBackground, true);
+    return card;
+}
+
+QWidget* SettingsPage::createThemeCard()
+{
+    QWidget* card = createCard();
+    QVBoxLayout* layout = new QVBoxLayout(card);
+    layout->setContentsMargins(20, 20, 20, 20);
+    layout->setSpacing(12);
+
+    QLabel* lbTitle = new QLabel("外观", card);
+    lbTitle->setObjectName("CardTitle");
+
+    // 三个选项一排，平分卡片宽度
+    QWidget* optionRow = new QWidget(card);
+    optionRow->setObjectName("Plain");
+    QHBoxLayout* optionLayout = new QHBoxLayout(optionRow);
+    optionLayout->setContentsMargins(0, 0, 0, 0);
+    optionLayout->setSpacing(12);
+
+    ThemeOption* optLight = new ThemeOption(ThemeOption::Light, "浅色", optionRow);
+    ThemeOption* optDark = new ThemeOption(ThemeOption::Dark, "深色", optionRow);
+    ThemeOption* optSystem = new ThemeOption(ThemeOption::System, "跟随系统", optionRow);
+
+    // 按钮的 id 直接用 Theme::Mode 的值，点了哪个就存哪个
+    themeGroup = new QButtonGroup(card);
+    themeGroup->addButton(optLight, Theme::Light);
+    themeGroup->addButton(optDark, Theme::Dark);
+    themeGroup->addButton(optSystem, Theme::System);
+    themeGroup->button(startupMode)->setChecked(true);
+
+    optionLayout->addWidget(optLight);
+    optionLayout->addWidget(optDark);
+    optionLayout->addWidget(optSystem);
+
+    QLabel* lbHint = new QLabel("跟随系统：Windows 设成深色时，SCat 也自动变成深色", card);
+    lbHint->setObjectName("Hint");
+    lbHint->setWordWrap(true);
+
+    // 换了主题要重启才生效，给个提示条和"立即重启"按钮
+    restartRow = new QWidget(card);
+    restartRow->setObjectName("RestartRow");
+    restartRow->setAttribute(Qt::WA_StyledBackground, true);
+
+    QHBoxLayout* restartLayout = new QHBoxLayout(restartRow);
+    restartLayout->setContentsMargins(14, 8, 8, 8);
+    restartLayout->setSpacing(10);
+
+    lbRestart = new QLabel(restartRow);
+    lbRestart->setObjectName("RestartText");
+
+    btnRestart = new QPushButton("立即重启", restartRow);
+    btnRestart->setObjectName("BtnPrimary");
+    btnRestart->setFixedSize(88, 30);
+    btnRestart->setCursor(Qt::PointingHandCursor);
+
+    restartLayout->addWidget(lbRestart, 1);
+    restartLayout->addWidget(btnRestart);
+    restartRow->hide();
+
+    layout->addWidget(lbTitle);
+    layout->addWidget(optionRow);
+    layout->addWidget(lbHint);
+    layout->addWidget(restartRow);
+
     return card;
 }
 
@@ -202,9 +268,13 @@ void SettingsPage::initUI()
     storageLayout->addSpacing(2);
     storageLayout->addWidget(btnChangeStorage, 0, Qt::AlignLeft);
 
+    // ---------- 卡片 4：外观 ----------
+    QWidget* themeCard = createThemeCard();
+
     // ---------- 组装 ----------
     contentLayout->addWidget(avatarCard);
     contentLayout->addWidget(infoCard);
+    contentLayout->addWidget(themeCard);
     contentLayout->addWidget(storageCard);
     contentLayout->addStretch();
 
@@ -251,6 +321,13 @@ void SettingsPage::initUI()
         }
         QLabel#PathValue {
             font-size: 13px; color: #555555;
+            background: transparent; border: none;
+        }
+        QWidget#RestartRow {
+            background-color: #F4F1FA; border: none; border-radius: 8px;
+        }
+        QLabel#RestartText {
+            font-size: 13px; color: #3A3A4A;
             background: transparent; border: none;
         }
         QLabel#Hint {
@@ -302,7 +379,8 @@ void SettingsPage::initConnect()
     connect(btnChangeAvatar, &QPushButton::clicked, this, &SettingsPage::onAvatarBtnClicked);
     connect(btnSaveNickname, &QPushButton::clicked, this, &SettingsPage::onSaveNicknameClicked);
     connect(btnChangeStorage, &QPushButton::clicked, this, &SettingsPage::onChangeStorageClicked);
-
+    connect(themeGroup, &QButtonGroup::idClicked, this, &SettingsPage::onThemeClicked);
+    connect(btnRestart, &QPushButton::clicked, this, &SettingsPage::sendRestartApp);
     // 回车也能保存昵称
     connect(editNickname, &QLineEdit::returnPressed, this, &SettingsPage::onSaveNicknameClicked);
 }
@@ -397,4 +475,22 @@ void SettingsPage::onAvatarUploaded(bool ok, const QString& reason)
 
     if (!ok)
         qDebug() << "upload avatar failed:" << reason;
+}
+
+void SettingsPage::onThemeClicked(int id)
+{
+    Theme::Mode mode = Theme::Mode(id);
+
+    // 点了就存，重启以后按新的来
+    Theme::setMode(mode);
+
+    // 选回启动时那个，就不用重启了，提示条收起来
+    if (mode == startupMode) {
+        restartRow->hide();
+        return;
+    }
+
+    static const char* kNames[] = { "浅色", "深色", "跟随系统" };
+    lbRestart->setText(QString("已切换为%1，重启 SCat 后生效").arg(QString::fromUtf8(kNames[id])));
+    restartRow->show();
 }

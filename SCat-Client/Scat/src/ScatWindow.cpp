@@ -171,6 +171,7 @@ void ScatWindow::initConnect()
     connect(settingsPage, &SettingsPage::sendChangeAvatar, this, &ScatWindow::sendChangeAvatar);
     connect(settingsPage, &SettingsPage::sendSaveNickname, this, &ScatWindow::sendSaveNickname);
     connect(settingsPage, &SettingsPage::sendChangeStorage, this, &ScatWindow::sendChangeStorage);
+    connect(settingsPage, &SettingsPage::sendRestartApp, this, &ScatWindow::sendRestartApp);
 
     // 通过 Lambda 捕获 currentFriendId 转发给外部
     connect(chatWindow, &ChatWindow::sendImage, this, [this](const QImage& image) {

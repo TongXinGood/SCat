@@ -57,6 +57,8 @@ add_executable(SCat-Client
     "Setting/src/SettingsPage.cpp"
     "Setting/include/SettingsManager.h"
     "Setting/src/SettingsManager.cpp"
+    "Setting/include/ThemeOption.h"
+     "Setting/src/ThemeOption.cpp"
      "Chat/include/ChatInputEdit.h"
      "Chat/src/ChatInputEdit.cpp"
      "Chat/include/ChatWindow.h" 
@@ -100,6 +102,8 @@ add_executable(SCat-Client
         "Other/include/UserSession.h"  "Protocol.h" "NoFrame.h" "NoFrame.cpp" "Other/include/AppController.h" "Other/src/AppController.cpp" )
 
     set_target_properties(SCat-Client PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>  OUTPUT_NAME "SCat")
+
+    
 
 
 # 7. 链接库

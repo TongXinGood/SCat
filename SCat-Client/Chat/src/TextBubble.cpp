@@ -132,7 +132,9 @@ void TextBubble::initUi(const QString& text, bool isSelf)
     cardLayout->setContentsMargins(16, 12, 16, 12);
 
     BubbleTextView* view = new BubbleTextView(card);
-    view->setFont(QFont("Microsoft YaHei", 10));
+    QFont font = QGuiApplication::font();
+    font.setPointSize(10);
+    view->setFont(font);
 
     // 配色跟原来的 QLabel 气泡一致，另外配了选中文字时的底色：
     // 深色气泡上默认的蓝色选区太扎眼，换成同色系

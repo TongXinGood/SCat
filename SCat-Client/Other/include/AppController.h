@@ -101,6 +101,7 @@ private slots:
     void onSaveNickname(const QString& nickname);
     void onNicknameSaved(bool ok, const QString& nickname, const QString& reason);
     void onChangeStorage(const QString& dir);
+    void onRestartApp();
     void onChangeAvatar(const QString& filePath);
     void onAvatarUploaded(bool ok, const QString& avatar, const QString& reason);
     void onAvatarDownloaded(const QString& avatar);

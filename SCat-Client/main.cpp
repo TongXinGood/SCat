@@ -58,11 +58,8 @@ int main(int argc, char* argv[])
     // 读主题设置，并且把 Qt 的配色方案写死（原来这里写死浅色，现在交给 Theme 按设置来）。
     // 必须在创建任何窗口之前
     Theme::init();
-
-    // 全局字体写死，不跟随对方系统设置：
-    // 英文和数字用 Segoe UI，中文回退到微软雅黑，两者 Win10/11 都自带
     QFont appFont = a.font();      // 保留系统默认字号，只换字体
-    appFont.setFamilies({ "Segoe UI", "Microsoft YaHei" });
+    appFont.setFamilies({ "Microsoft YaHei" });
     a.setFont(appFont);
     a.setWindowIcon(QIcon(":/Resource/icon/logo.ico"));
     a.setStyleSheet(Theme::css(kMenuStyle));

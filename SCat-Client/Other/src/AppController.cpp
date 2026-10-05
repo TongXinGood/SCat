@@ -17,6 +17,7 @@
 #include <QDir>
 #include <QDesktopServices>
 #include <QUrl>
+#include <QProcess>
 
 static const char* kRememberKey = "login/remember";
 static const char* kAccountKey = "login/account";
@@ -98,7 +99,7 @@ void AppController::start()
     QString cfgPath = QCoreApplication::applicationDirPath() + "/config.ini";
     QSettings cfg(cfgPath, QSettings::IniFormat);
 
-    QString host = cfg.value("server/host", "124.221.122.184").toString();
+    QString host = cfg.value("server/host", "127.0.0.1").toString();
     quint16 port = static_cast<quint16>(cfg.value("server/port", 8888).toUInt());
 
     // 文件不存在就按默认值生成一份，用户拿到手就知道能改什么
@@ -212,6 +213,7 @@ void AppController::onLoginSuccess(const QJsonObject& info)
     connect(scatWin, &ScatWindow::sendNotifyClicked, this, &AppController::onNotifyClicked);
     connect(scatWin, &ScatWindow::sendSaveNickname, this, &AppController::onSaveNickname);
     connect(scatWin, &ScatWindow::sendChangeStorage, this, &AppController::onChangeStorage);
+    connect(scatWin, &ScatWindow::sendRestartApp, this, &AppController::onRestartApp);
     connect(scatWin, &ScatWindow::sendChangeAvatar, this, &AppController::onChangeAvatar);
     scatWin->show();
     // 登录窗用不着了
@@ -659,6 +661,19 @@ void AppController::onNicknameSaved(bool ok, const QString& nickname, const QStr
 
     if (scatWin)
         scatWin->updateMyNickname(nickname);
+}
+
+void AppController::onRestartApp()
+{
+    // 先把新的 SCat 拉起来，再退出自己。新的那个会重新读主题设置
+    QString exe = QCoreApplication::applicationFilePath();
+
+    if (!QProcess::startDetached(exe, QCoreApplication::arguments().mid(1))) {
+        QMessageBox::warning(scatWin, "重启失败", "没能自动重启，请手动关闭后重新打开 SCat");
+        return;
+    }
+
+    qApp->quit();
 }
 
 void AppController::onChangeStorage(const QString& dir)
