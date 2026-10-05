@@ -50,7 +50,7 @@ void ScatWindow::initUI()
 
     // ================= 左侧容器 =================
     leftContainer = new QWidget(centralWidget);
-    leftContainer->setFixedWidth(300); // 稍微缩窄一点侧边栏，给聊天区留出更多空间
+    leftContainer->setFixedWidth(240); // 稍微缩窄一点侧边栏，给聊天区留出更多空间
     leftContainer->setAttribute(Qt::WA_StyledBackground, true);
     leftContainer->setStyleSheet("background-color: #FFFFFF; border-right: 1px solid #EAEAEA;");
 
