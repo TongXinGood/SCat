@@ -11,9 +11,9 @@ RequestWindow::RequestWindow(QWidget* parent) : NoFrame(parent)
     config.titlebarcolor = QColor(255, 255, 255);
     config.borderRadius = 15;
     config.defaultsize = QSize(400, 560);
-    config.titlebarheight = 40;
+    config.titlebarheight = 56;
     config.showlogo = false;
-    config.showtext = false;
+    config.showtext = true;
     config.showmin = false;
     config.showmax = false;
     config.showclose = true;
@@ -21,6 +21,9 @@ RequestWindow::RequestWindow(QWidget* parent) : NoFrame(parent)
     this->setFrameconfig(config);
 
     this->setFixedSize(400, 560);
+
+    this->setWindowTitle("好友申请");
+    this->setTitleStyle("font-size: 18px; font-weight: bold; color: #1A1A1A; padding-left: 10px;");
 
     initUI();
     refreshEmptyHint();
@@ -41,9 +44,6 @@ void RequestWindow::initUI()
     mainLayout->setContentsMargins(24, 8, 24, 24);
     mainLayout->setSpacing(14);
 
-    lbTitle = new QLabel("好友申请", content);
-    lbTitle->setObjectName("ReqTitle");
-
     listWidget = new QListWidget(content);
     listWidget->setFrameShape(QFrame::NoFrame);
     listWidget->setSelectionMode(QAbstractItemView::NoSelection);
@@ -54,7 +54,6 @@ void RequestWindow::initUI()
     lbEmpty->setObjectName("ReqEmpty");
     lbEmpty->setAlignment(Qt::AlignCenter);
 
-    mainLayout->addWidget(lbTitle);
     mainLayout->addWidget(listWidget, 1);
     mainLayout->addWidget(lbEmpty, 1);
 
@@ -63,9 +62,6 @@ void RequestWindow::initUI()
     content->setStyleSheet(R"(
         #RequestContent { background-color: #FFFFFF; }
 
-        #ReqTitle {
-            font-size: 18px; font-weight: bold; color: #1A1A1A;
-        }
         #ReqEmpty {
             font-size: 13px; color: #999999;
         }

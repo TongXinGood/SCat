@@ -82,12 +82,12 @@ void ChatWindow::initUi()
 void ChatWindow::initHeader()
 {
     headerWidget = new QWidget(this);
-    headerWidget->setFixedHeight(70);
+    headerWidget->setFixedHeight(64);
     headerWidget->setAttribute(Qt::WA_StyledBackground, true);
     headerWidget->setStyleSheet("background-color: #FFFFFF;");
 
     QHBoxLayout* headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(20, 10, 20, 10);
+    headerLayout->setContentsMargins(20, 8, 20, 8);
     headerLayout->setSpacing(15);
 
     lbAvatar = new QLabel(headerWidget);
@@ -97,7 +97,7 @@ void ChatWindow::initHeader()
 
     QVBoxLayout* infoLayout = new QVBoxLayout();
     infoLayout->setSpacing(2);
-    infoLayout->setContentsMargins(0, 5, 0, 5);
+    infoLayout->setContentsMargins(0, 0, 0, 0);
 
     lbName = new QLabel("Helena Hills", headerWidget);
     lbName->setStyleSheet("font-size: 16px; font-weight: bold; color: #333333; border: none; background: transparent;");
@@ -105,6 +105,7 @@ void ChatWindow::initHeader()
     lbStatus = new QLabel("Active 20m ago", headerWidget);
     lbStatus->setStyleSheet("font-size: 12px; color: #999999; border: none; background: transparent;");
 
+    infoLayout->addStretch();
     infoLayout->addWidget(lbName);
     infoLayout->addWidget(lbStatus);
     infoLayout->addStretch();

@@ -40,7 +40,6 @@ private:
     QWidget* content;
     QVBoxLayout* mainLayout;
 
-    QLabel* lbTitle;
     QListWidget* listWidget;
     QLabel* lbEmpty;
 };

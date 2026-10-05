@@ -107,11 +107,17 @@ void NoFrame::initUi() {
 	lbLogo->setObjectName("lbLogo");
 	lbTitle = new QLabel(titleBar);
 	lbTitle->setObjectName("lbTitle");
-	btnMin = new QPushButton(titleBar);
+
+	// logo 和标题文字不接收鼠标，点在它们上面也能拖动窗口。
+	// 不加的话，拖动时 Windows 问"这里是不是标题栏"，会因为点到了子控件而说"不是"
+	lbLogo->setAttribute(Qt::WA_TransparentForMouseEvents);
+	lbTitle->setAttribute(Qt::WA_TransparentForMouseEvents);
+
+	btnMin = new TitleButton(titleBar);
 	btnMin->setObjectName("btnMin");
-	btnMax = new QPushButton(titleBar);
+	btnMax = new TitleButton(titleBar);
 	btnMax->setObjectName("btnMax");
-	btnClose = new QPushButton(titleBar);
+	btnClose = new TitleButton(titleBar);
 	btnClose->setObjectName("btnClose");
 
 	titleLayout->addWidget(lbLogo);
@@ -249,6 +255,11 @@ void NoFrame::setWindowTitle(const QString& title)
 {
 	lbTitle->setText(title);
 	FramelessWindow::setWindowTitle(title);
+}
+
+void NoFrame::setTitleStyle(const QString& qss)
+{
+	lbTitle->setStyleSheet(qss);
 }
 
 void NoFrame::onbtncloseClick()

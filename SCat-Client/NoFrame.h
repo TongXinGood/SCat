@@ -47,7 +47,9 @@ public:
 	void setFrameconfig(const Frameconfig &config);
 	void setMainWindow(QWidget* widget);
 	void setWindowTitle(const QString& title);
-
+	//标题文字的样式。默认是小字（主窗口左上角的 "SCat"）；
+	// 弹窗想把大标题放进标题栏、跟右边的关闭按钮对齐，就用它把字调大
+	void setTitleStyle(const QString & qss);
 private slots:
 	void onbtncloseClick();
 	void onbtnminClick();

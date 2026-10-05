@@ -114,11 +114,11 @@ void ScatWindow::initUI()
 void ScatWindow::initProfileSection()
 {
     profileWidget = new QWidget(leftContainer);
-    profileWidget->setFixedHeight(80);
+    profileWidget->setFixedHeight(64);
     profileWidget->setStyleSheet("border: none;"); // 清除继承下来的右侧边框线影响
 
     QHBoxLayout* profileLayout = new QHBoxLayout(profileWidget);
-    profileLayout->setContentsMargins(20, 10, 20, 10);
+    profileLayout->setContentsMargins(20, 7, 20, 7);
     profileLayout->setSpacing(15);
 
     // 1. 个人头像
