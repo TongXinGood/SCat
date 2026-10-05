@@ -1,4 +1,5 @@
 ﻿#include "../include/LoginWindow.h"
+#include "../../Other/include/Theme.h"
 
 LoginWindow::LoginWindow(QWidget* parent):NoFrame(parent)
 {
@@ -152,7 +153,7 @@ void LoginWindow::initUI()
         #BtnForgot:hover { color: #000000; text-decoration: underline; }
     )";
 
-    login->setStyleSheet(qss);
+    login->setStyleSheet(Theme::css(qss));
 }
 
 void LoginWindow::initConnect()

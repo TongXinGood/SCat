@@ -59,6 +59,7 @@ private:
 	void initUi();
 	void updateStyle();
 	void changeIconsize();
+	void applyDarkFrame();      // 深色模式下把 Win11 窗口外圈的细边框换成深色
 
 private:
 	QWidget* centralContainer;//包裹整个窗口内容的容器 (用于做圆角背景)

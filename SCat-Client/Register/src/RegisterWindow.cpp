@@ -1,4 +1,5 @@
 ﻿#include "../include/RegisterWindow.h"
+#include "../../Other/include/Theme.h"
 #include <QMessageBox>
 
 RegisterWindow::RegisterWindow(QWidget* parent):NoFrame(parent)
@@ -166,7 +167,7 @@ void RegisterWindow::initUi()
             color: #000000;
         }
     )";
-    reg->setStyleSheet(qss);
+    reg->setStyleSheet(Theme::css(qss));
 }
 
 void RegisterWindow::initconnect()
