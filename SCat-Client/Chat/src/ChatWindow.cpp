@@ -286,7 +286,7 @@ QWidget* ChatWindow::createImageBubbleWidget(const ChatMessage& msg)
     return widget;
 }
 
-void ChatWindow::addBubble(const ChatMessage& msg)
+QWidget* ChatWindow::addBubble(const ChatMessage& msg)
 {
 
     if (msg.time > 0 &&
@@ -311,6 +311,8 @@ void ChatWindow::addBubble(const ChatMessage& msg)
     item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
     msgList->setItemWidget(item, bubbleWidget);
     msgList->scrollToBottom();
+
+    return bubbleWidget;
 }
 
 void ChatWindow::addTimeSeparator(qint64 time)
@@ -470,7 +472,8 @@ void ChatWindow::setHistory(const QList<ChatMessage>& list)
 
 void ChatWindow::appendMessage(const ChatMessage& msg)
 {
-    addBubble(msg);
+    // 新来的一条从下面浮上来。加载历史记录不走这里，一屏几十条一起动太乱
+    Motion::slideUpIn(addBubble(msg));
 }
 
 void ChatWindow::setAvatar(const QPixmap& avatar)

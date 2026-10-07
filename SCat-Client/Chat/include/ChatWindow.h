@@ -54,7 +54,7 @@ private:
     void initHeader();
     void initMsgList();
     void initInput();
-    void addBubble(const ChatMessage& msg);
+    QWidget* addBubble(const ChatMessage& msg);    // 返回画出来的气泡
 
     // 跟上一条隔得久了就插一条居中的时间，像微信那样
     void addTimeSeparator(qint64 time);
