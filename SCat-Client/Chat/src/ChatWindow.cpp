@@ -2,6 +2,7 @@
 #include "../include/TextBubble.h"
 #include "../../Other/include/ImageUtils.h"
 #include "../../Other/include/Theme.h"
+#include "../../Other/include/Motion.h"
 #include <QDebug>
 #include <QScrollBar>
 #include <QAbstractItemView>
@@ -210,6 +211,7 @@ void ChatWindow::initInput()
     btnmood->setCursor(Qt::PointingHandCursor); // 显式设置鼠标手型
     btnmood->setIcon(Theme::icon(":/Resource/icon/mood.png"));
     btnmood->setIconSize(QSize(22, 22)); // 图标稍微小一点点，留点呼吸感
+    Motion::addRipple(btnmood, 12);
     btnmood->setStyleSheet(Theme::css("QPushButton { border: none; background: transparent; } QPushButton:hover { background: #F5F5F5; border-radius: 12px; }"));
 
     // 3. 文件按钮
@@ -218,6 +220,7 @@ void ChatWindow::initInput()
     btnFile->setCursor(Qt::PointingHandCursor); // 显式设置鼠标手型
     btnFile->setIcon(Theme::icon(":/Resource/icon/folder.png"));
     btnFile->setIconSize(QSize(20, 20));
+    Motion::addRipple(btnFile, 12);
     btnFile->setStyleSheet(Theme::css("QPushButton { border: none; background: transparent; } QPushButton:hover { background: #F5F5F5; border-radius: 12px; }"));
 
     inputLayout->addWidget(msgEdit);

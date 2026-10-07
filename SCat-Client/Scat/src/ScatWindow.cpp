@@ -1,6 +1,7 @@
 ﻿#include "../include/ScatWindow.h"
 #include "../../Other/include/AvatarUtils.h"
 #include "../../Other/include/Theme.h"
+#include "../../Other/include/Motion.h"
 #include <QPixmap>
 
 ScatWindow::ScatWindow(QWidget* parent) : NoFrame(parent)
@@ -71,6 +72,7 @@ void ScatWindow::initUI()
     btnNotify->setFixedSize(56, 56);
     btnNotify->setIcon(Theme::icon(":/Resource/icon/notifications.png"));
     btnNotify->setIconSize(QSize(26, 26));
+    Motion::addRipple(btnNotify, 28);
     btnNotify->setStyleSheet(Theme::css(
         "#BtnNotify { background-color: #EFEBFA; border: none; border-radius: 28px; }"
         "#BtnNotify:hover { background-color: #E4DCF7; }"
@@ -144,6 +146,7 @@ void ScatWindow::initProfileSection()
     btnSettings->setCursor(Qt::PointingHandCursor);
     btnSettings->setIcon(Theme::icon(":/Resource/icon/settings.png", QColor("#9C98AA")));
     btnSettings->setIconSize(QSize(20, 20));
+    Motion::addRipple(btnSettings, 12);
     btnSettings->setStyleSheet(Theme::css(
         "QPushButton { border: none; background: transparent; }"
         "QPushButton:hover { background-color: #F0F0F0; border-radius: 12px; }"

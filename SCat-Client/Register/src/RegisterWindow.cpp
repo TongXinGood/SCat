@@ -1,5 +1,6 @@
 ﻿#include "../include/RegisterWindow.h"
 #include "../../Other/include/Theme.h"
+#include "../../Other/include/Motion.h"
 #include <QMessageBox>
 
 RegisterWindow::RegisterWindow(QWidget* parent):NoFrame(parent)
@@ -64,6 +65,7 @@ void RegisterWindow::initUi()
     btnregister = new QPushButton("注册 Let's Chat", reg); 
     btnregister->setObjectName("BtnRegister"); 
     btnregister->setCursor(Qt::PointingHandCursor);
+    Motion::addRipple(btnregister, 8, Motion::OnPrimary);
     btnreturn = new QPushButton("返回", reg);
     btnreturn->setObjectName("BtnReturn"); 
     btnreturn->setCursor(Qt::PointingHandCursor);

@@ -1,6 +1,7 @@
 #include "../include/EmojiPicker.h"
 #include "../../Other/include/UserSession.h"
 #include "../../Other/include/Theme.h"
+#include "../../Other/include/Motion.h"
 #include <QVBoxLayout>
 #include <QGridLayout>
 #include <QLabel>
@@ -157,6 +158,7 @@ QWidget* EmojiPicker::createSection(const QString& title, const QList<EmojiItem>
         cell->setFocusPolicy(Qt::NoFocus);
         cell->setIcon(QIcon(em.pixmap(item.id, kIconSize, dpr)));
         cell->setIconSize(QSize(kIconSize, kIconSize));
+        Motion::addRipple(cell, 8);
 
         QString text = item.text;
         connect(cell, &QPushButton::clicked, this, [this, item]() {

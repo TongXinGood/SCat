@@ -2,6 +2,7 @@
 #include "../../Other/include/AppPath.h"
 #include "../../Other/include/AvatarUtils.h"
 #include "../include/ThemeOption.h"
+#include "../../Other/include/Motion.h"
 #include <QHBoxLayout>
 #include <QScrollArea>
 #include <QFileDialog>
@@ -390,6 +391,11 @@ void SettingsPage::initUI()
 
 void SettingsPage::initConnect()
 {
+    // 按钮的水波纹。圆角跟样式表里的 border-radius 一致
+    Motion::addRipple(btnSaveNickname, 8, Motion::OnPrimary);
+    Motion::addRipple(btnRestart, 8, Motion::OnPrimary);
+    Motion::addRipple(btnChangeAvatar, 8);
+    Motion::addRipple(btnChangeStorage, 8);
     connect(btnChangeAvatar, &QPushButton::clicked, this, &SettingsPage::onAvatarBtnClicked);
     connect(btnSaveNickname, &QPushButton::clicked, this, &SettingsPage::onSaveNicknameClicked);
     connect(btnChangeStorage, &QPushButton::clicked, this, &SettingsPage::onChangeStorageClicked);

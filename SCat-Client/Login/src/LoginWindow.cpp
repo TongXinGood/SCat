@@ -1,5 +1,6 @@
 ﻿#include "../include/LoginWindow.h"
 #include "../../Other/include/Theme.h"
+#include "../../Other/include/Motion.h"
 
 LoginWindow::LoginWindow(QWidget* parent):NoFrame(parent)
 {
@@ -65,11 +66,13 @@ void LoginWindow::initUI()
 	btnLogin->setObjectName("BtnLogin"); 
 	btnLogin->setCursor(Qt::PointingHandCursor); 
     btnLogin->setFixedHeight(44);
+    Motion::addRipple(btnLogin, 8, Motion::OnPrimary);
 
 	btnRegister = new QPushButton("注册 register", login);
 	btnRegister->setObjectName("BtnRegister"); 
 	btnRegister->setCursor(Qt::PointingHandCursor);
     btnRegister->setFixedHeight(44);
+    Motion::addRipple(btnRegister, 8);
 
 	btnForgot = new QPushButton("忘记密码？点击这里", login);
 	btnForgot->setObjectName("BtnForgot"); 

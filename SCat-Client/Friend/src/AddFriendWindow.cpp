@@ -1,6 +1,7 @@
 ﻿#include "../include/AddFriendWindow.h"
 #include "../../Other/include/AvatarUtils.h"
 #include "../../Other/include/Theme.h"
+#include "../../Other/include/Motion.h"
 #include <QDebug>
 
 AddFriendWindow::AddFriendWindow(QWidget* parent) : NoFrame(parent)
@@ -106,6 +107,7 @@ void AddFriendWindow::initUI()
     btnAdd->setObjectName("BtnAdd");
     btnAdd->setFixedSize(72, 32);
     btnAdd->setCursor(Qt::PointingHandCursor);
+    Motion::addRipple(btnAdd, 6, Motion::OnPrimary);
 
     resultLayout->addWidget(lbAvatar);
     resultLayout->addLayout(nameLayout);

@@ -1,6 +1,7 @@
 ﻿#include "../include/FriendList.h"
 #include "../include/FriendListitem.h"
 #include "../../Other/include/Theme.h"
+#include "../../Other/include/Motion.h"
 #include <QIcon>
 #include <QCursor>
 
@@ -83,6 +84,7 @@ void FriendList::initUI()
     btnAdd->setCursor(Qt::PointingHandCursor);
     btnAdd->setIcon(Theme::icon(":/Resource/icon/add.png", QColor("#9C98AA")));
     btnAdd->setIconSize(QSize(17, 17));
+    Motion::addRipple(btnAdd, 12);
     btnAdd->setStyleSheet(Theme::css(
         "QPushButton { "
         "   border: none; "

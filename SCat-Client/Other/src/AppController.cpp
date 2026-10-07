@@ -99,7 +99,7 @@ void AppController::start()
     QString cfgPath = QCoreApplication::applicationDirPath() + "/config.ini";
     QSettings cfg(cfgPath, QSettings::IniFormat);
 
-    QString host = cfg.value("server/host", "127.0.0.1").toString();
+    QString host = cfg.value("server/host", "124.221.122.184").toString();
     quint16 port = static_cast<quint16>(cfg.value("server/port", 8888).toUInt());
 
     // 文件不存在就按默认值生成一份，用户拿到手就知道能改什么

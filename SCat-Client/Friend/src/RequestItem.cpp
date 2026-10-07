@@ -1,5 +1,6 @@
 #include "../include/RequestItem.h"
 #include "../../Other/include/Theme.h"
+#include "../../Other/include/Motion.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 
@@ -46,11 +47,13 @@ void RequestItem::initUI(const QString& nickname, const QPixmap& avatar)
     btnAccept->setObjectName("BtnAccept");
     btnAccept->setFixedSize(56, 30);
     btnAccept->setCursor(Qt::PointingHandCursor);
+    Motion::addRipple(btnAccept, 6, Motion::OnPrimary);
 
     btnReject = new QPushButton("拒绝", this);
     btnReject->setObjectName("BtnReject");
     btnReject->setFixedSize(56, 30);
     btnReject->setCursor(Qt::PointingHandCursor);
+    Motion::addRipple(btnReject, 6);
 
     mainLayout->addWidget(lbAvatar);
     mainLayout->addLayout(nameLayout);

@@ -1,5 +1,6 @@
 #include "../include/FriendListitem.h"
 #include "../../Other/include/Theme.h"
+#include "../../Other/include/Motion.h"
 #include <QFontMetrics>
 #include <QDateTime>
 
@@ -102,6 +103,7 @@ void FriendListItem::initUI(const QPixmap& avatar, const QString& name, const QS
 
     mainLayout->addWidget(lbAvatar);
     mainLayout->addLayout(textLayout, 1);
+    Motion::addRipple(this, 0);
 
     this->setStyleSheet(Theme::css(R"(
         #FriendItem   { background-color: transparent; }
