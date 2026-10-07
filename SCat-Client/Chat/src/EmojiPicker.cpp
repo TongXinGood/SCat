@@ -199,7 +199,8 @@ void EmojiPicker::popup(QWidget* anchor)
 
     refreshRecent();
     move(x, y);
-    show();
+    // 从右下角（表情按钮那里）放大展开。原点要算上阴影边距，落在卡片的角上
+    Motion::popupOpen(this, card, QPoint(width() - kShadow, height() - kShadow));
 }
 
 void EmojiPicker::refreshRecent()
