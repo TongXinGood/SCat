@@ -2,6 +2,7 @@
 #include "../../Other/include/AppPath.h"
 #include "../../Other/include/AvatarUtils.h"
 #include "../include/ThemeOption.h"
+#include "../../Other/include/UiScale.h"
 #include "../../Other/include/Motion.h"
 #include <QHBoxLayout>
 #include <QScrollArea>
@@ -10,7 +11,7 @@
 #include <QFontMetrics>
 #include <QDebug>
 
-SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent), startupMode(Theme::mode())
+SettingsPage::SettingsPage(QWidget* parent): QWidget(parent), startupMode(Theme::mode()), startupScale(UiScale::percent())
 {
     this->setAttribute(Qt::WA_StyledBackground, true);
     this->setObjectName("SettingsPage");
@@ -91,12 +92,76 @@ QWidget* SettingsPage::createThemeCard()
     restartLayout->addWidget(btnRestart);
     restartRow->hide();
 
+    // 主题和缩放之间一条细线隔开
+    QWidget* line = new QWidget(card);
+    line->setObjectName("RowLine");
+    line->setFixedHeight(1);
+    line->setAttribute(Qt::WA_StyledBackground, true);
+
     layout->addWidget(lbTitle);
     layout->addWidget(optionRow);
     layout->addWidget(lbHint);
+    layout->addSpacing(4);
+    layout->addWidget(line);
+    layout->addSpacing(4);
+    layout->addWidget(createScaleRow(card));
     layout->addWidget(restartRow);
 
     return card;
+}
+
+QWidget* SettingsPage::createScaleRow(QWidget* parent)
+{
+    QWidget* row = new QWidget(parent);
+    row->setObjectName("Plain");
+
+    QHBoxLayout* layout = new QHBoxLayout(row);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(16);
+
+    // 左边：标题 + 一行说明
+    QVBoxLayout* textLayout = new QVBoxLayout();
+    textLayout->setContentsMargins(0, 0, 0, 0);
+    textLayout->setSpacing(4);
+
+    QLabel* lbTitle = new QLabel("界面缩放", row);
+    lbTitle->setObjectName("RowValue");
+
+    QLabel* lbHint = new QLabel("Windows 缩放 150% 时推荐 75%", row);
+    lbHint->setObjectName("Hint");
+
+    textLayout->addWidget(lbTitle);
+    textLayout->addWidget(lbHint);
+
+    // 右边：几个档位连成一排的分段按钮，选中的那个是深色底
+    QWidget* segment = new QWidget(row);
+    segment->setObjectName("Segment");
+    segment->setAttribute(Qt::WA_StyledBackground, true);
+
+    QHBoxLayout* segLayout = new QHBoxLayout(segment);
+    segLayout->setContentsMargins(3, 3, 3, 3);
+    segLayout->setSpacing(2);
+
+    // 按钮的 id 直接用百分比，点了哪个就存哪个
+    scaleGroup = new QButtonGroup(row);
+    for (int value : UiScale::options()) {
+        QPushButton* btn = new QPushButton(QString("%1%").arg(value), segment);
+        btn->setObjectName("SegmentBtn");
+        btn->setCheckable(true);
+        btn->setFixedSize(52, 28);
+        btn->setCursor(Qt::PointingHandCursor);
+        btn->setFocusPolicy(Qt::NoFocus);
+        Motion::addRipple(btn, 6);
+
+        scaleGroup->addButton(btn, value);
+        segLayout->addWidget(btn);
+    }
+    scaleGroup->button(startupScale)->setChecked(true);
+
+    layout->addLayout(textLayout, 1);
+    layout->addWidget(segment, 0, Qt::AlignVCenter);
+
+    return row;
 }
 
 QWidget* SettingsPage::createRow(const QString& title, QWidget* right)
@@ -331,6 +396,19 @@ void SettingsPage::initUI()
             font-size: 13px; color: #3A3A4A;
             background: transparent; border: none;
         }
+        
+         QWidget#Segment {
+            background-color: #F4F1FA; border: none; border-radius: 8px;
+        }
+        QPushButton#SegmentBtn {
+            background: transparent; color: #555555;
+            border: none; border-radius: 6px; font-size: 13px;
+        }
+        QPushButton#SegmentBtn:hover   { background-color: #E7E1F5; }
+        QPushButton#SegmentBtn:checked {
+            background-color: #20202E; color: #FFFFFF; font-weight: bold;
+        }
+
         QLabel#Hint {
             font-size: 12px; color: #9E9E9E;
             background: transparent; border: none;
@@ -400,6 +478,7 @@ void SettingsPage::initConnect()
     connect(btnSaveNickname, &QPushButton::clicked, this, &SettingsPage::onSaveNicknameClicked);
     connect(btnChangeStorage, &QPushButton::clicked, this, &SettingsPage::onChangeStorageClicked);
     connect(themeGroup, &QButtonGroup::idClicked, this, &SettingsPage::onThemeClicked);
+    connect(scaleGroup, &QButtonGroup::idClicked, this, &SettingsPage::onScaleClicked);
     connect(btnRestart, &QPushButton::clicked, this, &SettingsPage::sendRestartApp);
     // 回车也能保存昵称
     connect(editNickname, &QLineEdit::returnPressed, this, &SettingsPage::onSaveNicknameClicked);
@@ -499,18 +578,37 @@ void SettingsPage::onAvatarUploaded(bool ok, const QString& reason)
 
 void SettingsPage::onThemeClicked(int id)
 {
-    Theme::Mode mode = Theme::Mode(id);
-
     // 点了就存，重启以后按新的来
-    Theme::setMode(mode);
+    Theme::setMode(Theme::Mode(id));
+    updateRestartRow();
+}
 
-    // 选回启动时那个，就不用重启了，提示条收起来
-    if (mode == startupMode) {
+void SettingsPage::onScaleClicked(int percent)
+{
+    UiScale::setPercent(percent);
+    updateRestartRow();
+}
+
+void SettingsPage::updateRestartRow()
+{
+    bool themeChanged = (Theme::mode() != startupMode);
+    bool scaleChanged = (UiScale::percent() != startupScale);
+
+    // 都选回启动时那个，就不用重启了，提示条收起来
+    if (!themeChanged && !scaleChanged) {
         restartRow->hide();
         return;
     }
 
     static const char* kNames[] = { "浅色", "深色", "跟随系统" };
-    lbRestart->setText(QString("已切换为%1，重启 SCat 后生效").arg(QString::fromUtf8(kNames[id])));
+    QString text;
+    if (themeChanged && scaleChanged)
+        text = "外观设置已修改，重启 SCat 后生效";
+    else if (themeChanged)
+        text = QString("已切换为%1，重启 SCat 后生效").arg(QString::fromUtf8(kNames[Theme::mode()]));
+    else
+        text = QString("界面缩放已改为 %1%，重启 SCat 后生效").arg(UiScale::percent());
+
+    lbRestart->setText(text);
     restartRow->show();
 }

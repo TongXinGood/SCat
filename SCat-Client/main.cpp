@@ -17,6 +17,7 @@
 #include "Other/include/AppController.h"
 #include "Friend/include/AddFriendWindow.h"
 #include "Other/include/Theme.h"
+#include "Other/include/UiScale.h"
 
 static const char* kMenuStyle = R"(
     QMenu {
@@ -49,7 +50,8 @@ static const char* kMenuStyle = R"(
 
 int main(int argc, char* argv[])
 {   
-    
+    UiScale::apply();
+
     QApplication a(argc, argv);
     
     QCoreApplication::setOrganizationName("SCat");

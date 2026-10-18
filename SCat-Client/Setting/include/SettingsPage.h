@@ -32,13 +32,14 @@ signals:
     void sendChangeAvatar(const QString& filePath);  // 用户选好了图片文件
     void sendSaveNickname(const QString& nickname);
     void sendChangeStorage(const QString& dir);      // 用户选好了新目录
-    void sendRestartApp();                           // 换了主题，用户点了"立即重启"
+    void sendRestartApp();                           // 换了主题或缩放，用户点了"立即重启"
 
 private slots:
     void onAvatarBtnClicked();
     void onSaveNicknameClicked();
     void onChangeStorageClicked();
     void onThemeClicked(int id);
+    void onScaleClicked(int percent);
 
 private:
     void initUI();
@@ -47,7 +48,8 @@ private:
     QWidget* createCard();                           // 统一的白色圆角卡片
     QWidget* createRow(const QString& title, QWidget* right);   // 一行：左标题右内容
     QWidget* createThemeCard();                      // 外观卡片：浅色 / 深色 / 跟随系统
-
+    QWidget* createScaleRow(QWidget* parent);        // 外观卡片里"界面缩放"那一行
+    void updateRestartRow();                         // 主题、缩放跟启动时不一样，就提示重启
 private:
     // 顶栏
     QWidget* headerWidget;
@@ -70,10 +72,12 @@ private:
 
     // 外观卡片
     QButtonGroup* themeGroup;
-    QWidget* restartRow;        // 选了跟启动时不一样的主题才出现
+    QButtonGroup* scaleGroup;   // 界面缩放的几个档位，id 就是百分比
+    QWidget* restartRow;        // 选了跟启动时不一样的主题或缩放才出现
     QLabel* lbRestart;
     QPushButton* btnRestart;
     Theme::Mode startupMode;    // 这次启动时用的主题，选回它提示条就消失
+    int startupScale;           // 这次启动时用的缩放
 };
 
 #endif // SETTINGSPAGE_H

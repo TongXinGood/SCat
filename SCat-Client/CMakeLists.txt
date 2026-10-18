@@ -94,6 +94,8 @@ add_executable(SCat-Client
     "Other/src/AvatarUtils.cpp"
     "Other/include/Motion.h"
      "Other/src/Motion.cpp"
+     "Other/include/UiScale.h"
+     "Other/src/UiScale.cpp"
       "Other/include/NotifyButton.h"
       "Other/src/NotifyButton.cpp"
       "Other/include/Notification.h"

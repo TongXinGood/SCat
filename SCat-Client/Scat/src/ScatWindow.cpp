@@ -4,6 +4,9 @@
 #include "../../Other/include/Motion.h"
 #include <QPixmap>
 
+// 左上角自己的头像。比好友列表里的（45）小一号，主次分明
+static const int kMyAvatarSize = 40;
+
 ScatWindow::ScatWindow(QWidget* parent) : NoFrame(parent)
 {
     // 1. 配置 NoFrame 的基础属性
@@ -52,7 +55,7 @@ void ScatWindow::initUI()
 
     // ================= 左侧容器 =================
     leftContainer = new QWidget(centralWidget);
-    leftContainer->setFixedWidth(240); // 稍微缩窄一点侧边栏，给聊天区留出更多空间
+    leftContainer->setFixedWidth(220); // 稍微缩窄一点侧边栏，给聊天区留出更多空间
     leftContainer->setAttribute(Qt::WA_StyledBackground, true);
     leftContainer->setStyleSheet(Theme::css("#LeftContainer { background-color: #FFFFFF; }"));
 
@@ -126,15 +129,15 @@ void ScatWindow::initProfileSection()
     profileWidget->setStyleSheet("border: none;"); // 清除继承下来的右侧边框线影响
 
     QHBoxLayout* profileLayout = new QHBoxLayout(profileWidget);
-    profileLayout->setContentsMargins(20, 7, 20, 7);
+    profileLayout->setContentsMargins(18, 7, 20, 7);
     profileLayout->setSpacing(15);
 
     // 1. 个人头像
     lbMyAvatar = new QLabel(profileWidget);
-    lbMyAvatar->setFixedSize(50, 50);
+    lbMyAvatar->setFixedSize(kMyAvatarSize, kMyAvatarSize);
     lbMyAvatar->setScaledContents(true);
     lbMyAvatar->setPixmap(QPixmap(":/Resource/icon/head.png")); // 记得添加实际资源
-    lbMyAvatar->setStyleSheet(Theme::css("border-radius: 25px; border: 1px solid #E0E0E0;"));
+    lbMyAvatar->setStyleSheet(Theme::css(QString("border-radius: %1px; border: 1px solid #E0E0E0;").arg(kMyAvatarSize / 2)));
 
     // 2. 个人名字
     lbMyName = new QLabel("Name", profileWidget);
@@ -228,7 +231,7 @@ void ScatWindow::onChatTextMsgSent(const QString& msg)
 void ScatWindow::setUserInfo(const QString& nickname, const QString& avatar)
 {
     lbMyName->setText(nickname);
-    lbMyAvatar->setPixmap(AvatarUtils::load(avatar, 50));
+    lbMyAvatar->setPixmap(AvatarUtils::load(avatar, kMyAvatarSize));
 }
 
 
@@ -366,7 +369,7 @@ void ScatWindow::updateMyNickname(const QString& nickname)
 
 void ScatWindow::updateMyAvatar(const QString& avatar)
 {
-    lbMyAvatar->setPixmap(AvatarUtils::load(avatar, 50));
+    lbMyAvatar->setPixmap(AvatarUtils::load(avatar, kMyAvatarSize));
 
     if (settingsPage)
         settingsPage->setAvatar(avatar);
