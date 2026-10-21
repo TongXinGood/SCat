@@ -206,7 +206,7 @@ void ScatWindow::onFriendSelected(const QString& friendId, const QString& friend
     QString status = info["online"].toBool() ? "在线" : "离线";
 
     chatWindow->setChatInfo(friendName, status,
-        AvatarUtils::load(info["avatar"].toString(), 45));
+        AvatarUtils::load(info["avatar"].toString(), kChatAvatarSize));
 
     emit requestHistory(friendId);
 }
