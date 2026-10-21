@@ -42,8 +42,8 @@ FriendList::~FriendList()
 void FriendList::initUI()
 {
     mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(0, 10, 0, 0);
-    mainLayout->setSpacing(10);
+    mainLayout->setContentsMargins(0, 4, 0, 0);
+    mainLayout->setSpacing(8);
 
     // 搜索区域外部容器
     searchContainer = new QWidget(this);
@@ -79,11 +79,11 @@ void FriendList::initUI()
     ));
 
     btnAdd = new QPushButton(searchContainer);
-    btnAdd->setFixedSize(24, 24);
+    btnAdd->setFixedSize(22, 22);
     btnAdd->setCursor(Qt::PointingHandCursor);
     btnAdd->setIcon(Theme::icon(":/Resource/icon/add.png", QColor("#9C98AA")));
-    btnAdd->setIconSize(QSize(17, 17));
-    Motion::addRipple(btnAdd, 12);
+    btnAdd->setIconSize(QSize(15, 15));
+    Motion::addRipple(btnAdd, 11);
     btnAdd->setStyleSheet(Theme::css(
         "QPushButton { "
         "   border: none; "
@@ -91,7 +91,7 @@ void FriendList::initUI()
         "} "
         "QPushButton:hover { "
         "   background: #F5F5F5; "
-        "   border-radius: 12px; "
+        "   border-radius: 11px; "
         "}"
     ));
 
@@ -150,7 +150,7 @@ void FriendList::addFriendItem(const QString& id, const QPixmap& avatar,
     FriendListItem* customWidget = new FriendListItem(id, avatar, name, lastMsg, this);
     customWidget->setTime(lastTime);
 
-    item->setSizeHint(QSize(listWidget->width(), 65));
+    item->setSizeHint(QSize(listWidget->width(), 56));
     listWidget->setItemWidget(item, customWidget);
 }
 

@@ -4,7 +4,7 @@
 #include <QFontMetrics>
 #include <QDateTime>
 
-static const int kAvatarSize = 45;
+static const int kAvatarSize = 40;
 
 // 列表里的时间要短：今天只显示几点，昨天显示"昨天"，
 // 一周内显示星期几，再早就只显示日期
@@ -49,8 +49,8 @@ void FriendListItem::initUI(const QPixmap& avatar, const QString& name, const QS
     this->setObjectName("FriendItem");
 
     mainLayout = new QHBoxLayout(this);
-    mainLayout->setContentsMargins(15, 10, 15, 10);
-    mainLayout->setSpacing(12);
+    mainLayout->setContentsMargins(14, 8, 14, 8);
+    mainLayout->setSpacing(10);
 
     lbAvatar = new QLabel(this);
     lbAvatar->setObjectName("ItemAvatar");
@@ -60,7 +60,7 @@ void FriendListItem::initUI(const QPixmap& avatar, const QString& name, const QS
 
     textLayout = new QVBoxLayout();
     textLayout->setContentsMargins(0, 0, 0, 0);
-    textLayout->setSpacing(4);
+    textLayout->setSpacing(2);
 
     // 第一行：名字 ………… 时间
     QHBoxLayout* topRow = new QHBoxLayout();
@@ -109,7 +109,7 @@ void FriendListItem::initUI(const QPixmap& avatar, const QString& name, const QS
         #FriendItem   { background-color: transparent; }
         #ItemAvatar   { background: transparent; border: none; }
         #ItemName {
-            font-weight: bold; font-size: 15px; color: #1A1A1A;
+            font-weight: bold; font-size: 14px; color: #1A1A1A;
             background-color: transparent; border: none;
         }
         #ItemTime {
@@ -117,7 +117,7 @@ void FriendListItem::initUI(const QPixmap& avatar, const QString& name, const QS
             background-color: transparent; border: none;
         }
         #ItemLastMsg {
-            font-size: 13px; color: #757575;
+            font-size: 12px; color: #757575;
         }
         #UnreadBadge {
             background-color: #FF4D4F;

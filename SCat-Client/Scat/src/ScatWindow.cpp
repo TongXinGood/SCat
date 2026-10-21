@@ -5,7 +5,8 @@
 #include <QPixmap>
 
 // 左上角自己的头像。比好友列表里的（45）小一号，主次分明
-static const int kMyAvatarSize = 40;
+static const int kMyAvatarSize = 36;
+static const int kFriendAvatarSize = 40;   // 好友列表
 
 ScatWindow::ScatWindow(QWidget* parent) : NoFrame(parent)
 {
@@ -16,8 +17,8 @@ ScatWindow::ScatWindow(QWidget* parent) : NoFrame(parent)
     config.borderRadius = 10;
 
     // 修复 1 与 3：调整默认大小适配笔记本屏幕，并关闭最大化按钮
-    config.defaultsize = QSize(850, 600);
-    config.titlebarheight = 40;                   // 增加一点高度，让左上角Logo更协调
+    config.defaultsize = QSize(920, 650);
+    config.titlebarheight = 36;                   // 增加一点高度，让左上角Logo更协调
 
     // 修复 2：开启左上角Logo与文本显示
     config.showlogo = true;
@@ -125,12 +126,12 @@ void ScatWindow::initUI()
 void ScatWindow::initProfileSection()
 {
     profileWidget = new QWidget(leftContainer);
-    profileWidget->setFixedHeight(64);
+    profileWidget->setFixedHeight(56);
     profileWidget->setStyleSheet("border: none;"); // 清除继承下来的右侧边框线影响
 
     QHBoxLayout* profileLayout = new QHBoxLayout(profileWidget);
-    profileLayout->setContentsMargins(18, 7, 20, 7);
-    profileLayout->setSpacing(15);
+    profileLayout->setContentsMargins(14, 6, 16, 6);
+    profileLayout->setSpacing(10);
 
     // 1. 个人头像
     lbMyAvatar = new QLabel(profileWidget);
@@ -141,14 +142,14 @@ void ScatWindow::initProfileSection()
 
     // 2. 个人名字
     lbMyName = new QLabel("Name", profileWidget);
-    lbMyName->setStyleSheet(Theme::css("font-size: 18px; font-weight: bold; color: #1A1A1A; border: none;"));
+    lbMyName->setStyleSheet(Theme::css("font-size: 15px; color: #1A1A1A; border: none;"));
 
     // 3. 设置按钮
     btnSettings = new QPushButton(profileWidget);
     btnSettings->setFixedSize(24, 24);
     btnSettings->setCursor(Qt::PointingHandCursor);
     btnSettings->setIcon(Theme::icon(":/Resource/icon/settings.png", QColor("#9C98AA")));
-    btnSettings->setIconSize(QSize(20, 20));
+    btnSettings->setIconSize(QSize(18, 18));
     Motion::addRipple(btnSettings, 12);
     btnSettings->setStyleSheet(Theme::css(
         "QPushButton { border: none; background: transparent; }"
@@ -248,7 +249,7 @@ void ScatWindow::setFriendList(const QJsonArray& friends)
 
         // 列表上显示 nickname（可以改），内部标识用 username（固定不变）
         friendList->addFriendItem(username,
-            AvatarUtils::load(obj["avatar"].toString(), 45),
+            AvatarUtils::load(obj["avatar"].toString(), kFriendAvatarSize),
             obj["nickname"].toString(),
             obj["lastMsg"].toString(),
             obj["lastTime"].toVariant().toLongLong());
@@ -383,7 +384,7 @@ void ScatWindow::refreshAvatar(const QString& avatar)
         if (it.value()["avatar"].toString() != avatar)
             continue;
 
-        friendList->updateAvatar(it.key(), AvatarUtils::load(avatar, 45));
+        friendList->updateAvatar(it.key(), AvatarUtils::load(avatar, kFriendAvatarSize));
 
         if (it.key() == currentFriendId)
             chatWindow->setAvatar(AvatarUtils::load(avatar, 45));
