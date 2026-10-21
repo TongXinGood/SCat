@@ -47,7 +47,7 @@ void FriendList::initUI()
 
     // 搜索区域外部容器
     searchContainer = new QWidget(this);
-    searchContainer->setFixedHeight(40);
+    searchContainer->setFixedHeight(32);
     searchContainer->setAttribute(Qt::WA_StyledBackground, true);
     searchContainer->setObjectName("SearchContainer");
     searchContainer->setStyleSheet(Theme::css(
@@ -63,7 +63,7 @@ void FriendList::initUI()
     searchLayout->setSpacing(8);
 
     lbSearchIcon = new QLabel(searchContainer);
-    lbSearchIcon->setFixedSize(18, 18);
+    lbSearchIcon->setFixedSize(16, 16);
     lbSearchIcon->setScaledContents(true);
     lbSearchIcon->setPixmap(Theme::pixmap(":/Resource/icon/search.png", QColor("#8E8A9C")));
     lbSearchIcon->setStyleSheet("border: none; background: transparent;");
@@ -74,7 +74,6 @@ void FriendList::initUI()
         "QLineEdit {"
         "   border: none;"
         "   background: transparent;"
-        "   font-size: 13px;"
         "   color: #333333;"
         "}"
     ));
