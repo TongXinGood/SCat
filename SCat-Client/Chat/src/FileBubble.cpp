@@ -47,7 +47,7 @@ void FileBubble::initUI()
     setStyleSheet("background-color: transparent;");
 
     QHBoxLayout* outer = new QHBoxLayout(this);
-    outer->setContentsMargins(10, 10, 10, 10);
+    outer->setContentsMargins(14, 3, 14, 3);
 
     card = new QWidget(this);
     card->setObjectName("FileCard");

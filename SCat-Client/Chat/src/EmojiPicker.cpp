@@ -188,8 +188,8 @@ void EmojiPicker::popup(QWidget* anchor)
 
     // 卡片右边对齐按钮右边，卡片底边在按钮上方 kAnchorGap 处。
     // 窗口比卡片多一圈阴影边距，所以要把 kShadow 补回来
-    QPoint pos = anchor->mapToGlobal(QPoint(anchor->width(), 0));
-    int x = pos.x() - width() + kShadow;
+    QPoint pos = anchor->mapToGlobal(QPoint(0, 0));
+    int x = pos.x() - kShadow;
     int y = pos.y() - height() + kShadow - kAnchorGap;
 
     // 主窗口贴着屏幕边的时候别让面板跑出屏幕
@@ -199,8 +199,8 @@ void EmojiPicker::popup(QWidget* anchor)
 
     refreshRecent();
     move(x, y);
-    // 从右下角（表情按钮那里）放大展开。原点要算上阴影边距，落在卡片的角上
-    Motion::popupOpen(this, card, QPoint(width() - kShadow, height() - kShadow));
+    // 从左下角（表情按钮那里）放大展开。原点要算上阴影边距，落在卡片的角上
+    Motion::popupOpen(this, card, QPoint(kShadow, height() - kShadow));
 }
 
 void EmojiPicker::refreshRecent()

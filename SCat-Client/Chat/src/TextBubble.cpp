@@ -118,7 +118,8 @@ void TextBubble::initUi(const QString& text, bool isSelf)
     setStyleSheet("background-color: transparent;");
 
     QHBoxLayout* outer = new QHBoxLayout(this);
-    outer->setContentsMargins(10, 10, 10, 10);
+    // 上下各 3，两条气泡之间只空 6，连着发的消息挨得紧，跟设计稿一样
+    outer->setContentsMargins(14, 3, 14, 3);
 
     // 圆角底色画在这一层上。QTextEdit 自己带的圆角会被里面的 viewport 盖住，
     // 所以分成两层：外面画底色，里面只放透明的字
@@ -130,11 +131,11 @@ void TextBubble::initUi(const QString& text, bool isSelf)
     card->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     QHBoxLayout* cardLayout = new QHBoxLayout(card);
-    cardLayout->setContentsMargins(16, 12, 16, 12);
+    cardLayout->setContentsMargins(12, 8, 12, 8);
 
     BubbleTextView* view = new BubbleTextView(card);
     QFont font = QGuiApplication::font();
-    font.setPointSize(10);
+    font.setPointSize(9);
     view->setFont(font);
 
     // 配色跟原来的 QLabel 气泡一致，另外配了选中文字时的底色：

@@ -226,7 +226,7 @@ namespace Motion
         QMargins m = layout->contentsMargins();
 
         // 上边距加大、下边距减小，总高度不变，列表不用重新算行高
-        int offset = qMin(kSlideOffset, m.bottom());
+        int offset = kSlideOffset;
 
         // 已经挂了别的效果（比如阴影）就只做位移，一个控件只能挂一个效果
         QGraphicsOpacityEffect* fade = nullptr;

@@ -84,28 +84,28 @@ void ChatWindow::initUi()
 void ChatWindow::initHeader()
 {
     headerWidget = new QWidget(this);
-    headerWidget->setFixedHeight(64);
+    headerWidget->setFixedHeight(52);
     headerWidget->setAttribute(Qt::WA_StyledBackground, true);
     headerWidget->setStyleSheet(Theme::css("background-color: #FFFFFF;"));
 
     QHBoxLayout* headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(20, 8, 20, 8);
-    headerLayout->setSpacing(15);
+    headerLayout->setContentsMargins(16, 6, 16, 6);
+    headerLayout->setSpacing(10);
 
     lbAvatar = new QLabel(headerWidget);
-    lbAvatar->setFixedSize(45, 45);
+    lbAvatar->setFixedSize(32, 32);
     lbAvatar->setPixmap(QPixmap());
     lbAvatar->setStyleSheet("background: transparent; border: none;");
 
     QVBoxLayout* infoLayout = new QVBoxLayout();
-    infoLayout->setSpacing(2);
+    infoLayout->setSpacing(0);
     infoLayout->setContentsMargins(0, 0, 0, 0);
 
     lbName = new QLabel("Helena Hills", headerWidget);
-    lbName->setStyleSheet(Theme::css("font-size: 16px; font-weight: bold; color: #333333; border: none; background: transparent;"));
+    lbName->setStyleSheet(Theme::css("font-size: 14px; font-weight: bold; color: #333333; border: none; background: transparent;"));
 
     lbStatus = new QLabel("Active 20m ago", headerWidget);
-    lbStatus->setStyleSheet(Theme::css("font-size: 12px; color: #999999; border: none; background: transparent;"));
+    lbStatus->setStyleSheet(Theme::css("font-size: 11px; color: #999999; border: none; background: transparent;"));
 
     infoLayout->addStretch();
     infoLayout->addWidget(lbName);
@@ -169,23 +169,23 @@ void ChatWindow::initInput()
     inputOuter->setStyleSheet("background-color: transparent;");
 
     QVBoxLayout* outerLayout = new QVBoxLayout(inputOuter);
-    outerLayout->setContentsMargins(20, 10, 20, 20);
+    outerLayout->setContentsMargins(16, 8, 16, 14);
 
     inputContainer = new QWidget(inputOuter);
-    inputContainer->setFixedHeight(50);
+    inputContainer->setFixedHeight(36);
     inputContainer->setAttribute(Qt::WA_StyledBackground, true);
     inputContainer->setObjectName("InputBar");
     inputContainer->setStyleSheet(Theme::css(
         "#InputBar { "
         "   background-color: #FFFFFF; "
-        "   border-radius: 25px; "
+        "   border-radius: 8px; "
         "   border: 1px solid #E5E5E5; "
         "}"
     ));
 
     QHBoxLayout* inputLayout = new QHBoxLayout(inputContainer);
-    inputLayout->setContentsMargins(20, 5, 15, 5);
-    inputLayout->setSpacing(5);
+    inputLayout->setContentsMargins(8, 0, 8, 0);
+    inputLayout->setSpacing(6);
 
     // 1. 输入框
     msgEdit = new ChatInputEdit(inputContainer);
@@ -196,12 +196,12 @@ void ChatWindow::initInput()
         "QTextEdit {"
         "   border: none;"
         "   background: transparent;"
-        "   font-size: 14px;"
+        "   font-size: 13px;"
         "   color: #333;"
-        "   padding-top: 6px;"
+        "   padding-top: 4px;"
         "}"
     ));
-    msgEdit->setFixedHeight(40);
+    msgEdit->setFixedHeight(30);
     connect(msgEdit, &ChatInputEdit::sendPressed, this, &ChatWindow::onReturnPressed);
     connect(msgEdit, &ChatInputEdit::imagePasted, this, &ChatWindow::sendImage);
 
@@ -210,7 +210,7 @@ void ChatWindow::initInput()
     btnmood->setFixedSize(24, 24);
     btnmood->setCursor(Qt::PointingHandCursor); // 显式设置鼠标手型
     btnmood->setIcon(Theme::icon(":/Resource/icon/mood.png"));
-    btnmood->setIconSize(QSize(22, 22)); // 图标稍微小一点点，留点呼吸感
+    btnmood->setIconSize(QSize(19, 19)); // 图标稍微小一点点，留点呼吸感
     Motion::addRipple(btnmood, 12);
     btnmood->setStyleSheet(Theme::css("QPushButton { border: none; background: transparent; } QPushButton:hover { background: #F5F5F5; border-radius: 12px; }"));
 
@@ -219,12 +219,13 @@ void ChatWindow::initInput()
     btnFile->setFixedSize(24, 24);
     btnFile->setCursor(Qt::PointingHandCursor); // 显式设置鼠标手型
     btnFile->setIcon(Theme::icon(":/Resource/icon/folder.png"));
-    btnFile->setIconSize(QSize(20, 20));
+    btnFile->setIconSize(QSize(17, 17));
     Motion::addRipple(btnFile, 12);
     btnFile->setStyleSheet(Theme::css("QPushButton { border: none; background: transparent; } QPushButton:hover { background: #F5F5F5; border-radius: 12px; }"));
 
-    inputLayout->addWidget(msgEdit);
+    // 表情在左、文件在右，跟设计稿一样
     inputLayout->addWidget(btnmood);
+    inputLayout->addWidget(msgEdit);
     inputLayout->addWidget(btnFile);
 
     outerLayout->addWidget(inputContainer);
@@ -246,7 +247,7 @@ QWidget* ChatWindow::createImageBubbleWidget(const ChatMessage& msg)
     QWidget* widget = new QWidget();
     widget->setStyleSheet("background-color: transparent;");
     QHBoxLayout* layout = new QHBoxLayout(widget);
-    layout->setContentsMargins(10, 10, 10, 10);
+    layout->setContentsMargins(14, 3, 14, 3);
 
     QLabel* bubble = new QLabel();
     QString path = ImageUtils::pathFor(msg.imgName);
@@ -333,7 +334,7 @@ QWidget* ChatWindow::createTimeWidget(qint64 time)
     QHBoxLayout* layout = new QHBoxLayout(widget);
     // 上边距比下边距大一点 —— 时间是"这一段对话的开头"，
     // 跟上一段拉开距离、跟下面的气泡贴紧，读起来更有层次
-    layout->setContentsMargins(10, 10, 10, 2);
+    layout->setContentsMargins(10, 12, 10, 4);
 
     QLabel* label = new QLabel(formatChatTime(time));
     label->setObjectName("TimeTip");
@@ -341,13 +342,12 @@ QWidget* ChatWindow::createTimeWidget(qint64 time)
 
     // 底色取聊天区背景 #F2F0F5 的同色系加深一档，
     // 比纯灰更搭，也不会跟白色气泡抢眼
+    // 跟设计稿一样，只是一行淡灰色的小字，不带底色
     label->setStyleSheet(Theme::css(
         "QLabel#TimeTip {"
-        "   background-color: #E6E2EE;"
-        "   color: #7E7A8C;"
+        "   background: transparent;"
+        "   color: #A3A1AB;"
         "   font-size: 11px;"
-        "   border-radius: 9px;"
-        "   padding: 3px 10px;"
         "}"
     ));
 

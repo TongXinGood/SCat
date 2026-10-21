@@ -7,6 +7,7 @@
 // 左上角自己的头像。比好友列表里的（45）小一号，主次分明
 static const int kMyAvatarSize = 36;
 static const int kFriendAvatarSize = 40;   // 好友列表
+static const int kChatAvatarSize = 32;     // 聊天顶栏
 
 ScatWindow::ScatWindow(QWidget* parent) : NoFrame(parent)
 {
@@ -280,7 +281,7 @@ void ScatWindow::updateFriendStatus(const QString& username, bool online)
     if (currentFriendId == username) {
         chatWindow->setChatInfo(info["nickname"].toString(),
             online ? "在线" : "离线",
-            AvatarUtils::load(info["avatar"].toString(), 45));
+            AvatarUtils::load(info["avatar"].toString(), kChatAvatarSize));
     }
 }
 
@@ -387,7 +388,7 @@ void ScatWindow::refreshAvatar(const QString& avatar)
         friendList->updateAvatar(it.key(), AvatarUtils::load(avatar, kFriendAvatarSize));
 
         if (it.key() == currentFriendId)
-            chatWindow->setAvatar(AvatarUtils::load(avatar, 45));
+            chatWindow->setAvatar(AvatarUtils::load(avatar, kChatAvatarSize));
     }
 }
 
