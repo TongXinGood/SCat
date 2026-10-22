@@ -518,8 +518,14 @@ bool ScatWindow::handleSplitEvent(QEvent* event)
         int x = centralWidget->mapFromGlobal(e->globalPosition().toPoint()).x();
         int width = qBound(kLeftMinWidth, x, kLeftMaxWidth);
 
+        if (width == leftContainer->width())
+            return true;
+
         leftRatio = double(width) / centralWidget->width();
         leftContainer->setFixedWidth(width);
+
+        mainLayout->activate();
+        updateSplitHandle();
         return true;
     }
 
