@@ -9,6 +9,13 @@ static const int kMyAvatarSize = 36;
 static const int kFriendAvatarSize = 40;   // 好友列表
 static const int kChatAvatarSize = 32;     // 聊天顶栏
 
+// 好友栏占窗口宽度的比例，以及上下限。
+// 默认窗口 920 宽时正好 220；窗口拉大跟着变宽，但不超过 320，
+// 缩小时不窄于 220，免得名字被挤得只剩几个字
+static const double kLeftRatio = 0.24;
+static const int kLeftMinWidth = 220;
+static const int kLeftMaxWidth = 320;
+
 ScatWindow::ScatWindow(QWidget* parent) : NoFrame(parent)
 {
     // 1. 配置 NoFrame 的基础属性
@@ -57,7 +64,7 @@ void ScatWindow::initUI()
 
     // ================= 左侧容器 =================
     leftContainer = new QWidget(centralWidget);
-    leftContainer->setFixedWidth(220); // 稍微缩窄一点侧边栏，给聊天区留出更多空间
+    leftContainer->setFixedWidth(kLeftMinWidth); // 稍微缩窄一点侧边栏，给聊天区留出更多空间
     leftContainer->setAttribute(Qt::WA_StyledBackground, true);
     leftContainer->setStyleSheet(Theme::css("#LeftContainer { background-color: #FFFFFF; }"));
 
@@ -122,6 +129,7 @@ void ScatWindow::initUI()
     mainLayout->addWidget(rightStackedWidget, 1);
     // 核心步骤：将组装好的 centralWidget 交给父类 NoFrame 渲染
     this->setMainWindow(centralWidget);
+    centralWidget->installEventFilter(this);
 }
 
 void ScatWindow::initProfileSection()
@@ -331,6 +339,9 @@ bool ScatWindow::eventFilter(QObject* watched, QEvent* event)
     if (watched == leftContainer && event->type() == QEvent::Resize)
         updateNotifyPos();
 
+    if (watched == centralWidget && event->type() == QEvent::Resize)
+        updateLeftWidth();
+
     return NoFrame::eventFilter(watched, event);
 }
 
@@ -426,4 +437,12 @@ void ScatWindow::updateFileState(const QString& msgid, int state,
     const QString& filePath)
 {
     chatWindow->updateFileState(msgid, state, filePath);
+}
+
+void ScatWindow::updateLeftWidth()
+{
+    int width = qBound(kLeftMinWidth, qRound(centralWidget->width() * kLeftRatio), kLeftMaxWidth);
+
+    if (leftContainer->width() != width)
+        leftContainer->setFixedWidth(width);
 }

@@ -23,7 +23,7 @@ class ScatWindow : public NoFrame
 {
     Q_OBJECT
 public:
-    explicit ScatWindow(QWidget* parent = nullptr);
+    explicit ScatWindow(QWidget* parent = nullptr);    
     ~ScatWindow();
     void setUserInfo(const QString& nickname, const QString& avatar);
     void setFriendList(const QJsonArray& friends);
@@ -81,6 +81,7 @@ private:
     void initProfileSection();
     void initConnect();
     void updateNotifyPos();
+    void updateLeftWidth();
 private:
     // 整个窗口的核心容器，最后会被塞进 NoFrame
     QWidget* centralWidget;
