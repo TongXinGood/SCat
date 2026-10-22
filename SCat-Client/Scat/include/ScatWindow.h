@@ -82,6 +82,10 @@ private:
     void initConnect();
     void updateNotifyPos();
     void updateLeftWidth();
+
+    void updateSplitHandle();   // 把拖动分隔线的那块透明区域挪到分隔线上
+    void setDividerActive(bool active);     // 鼠标放上去、拖动时分隔线变深
+    bool handleSplitEvent(QEvent* event);   // 拖动分隔线的鼠标事件
 private:
     // 整个窗口的核心容器，最后会被塞进 NoFrame
     QWidget* centralWidget;
@@ -90,6 +94,11 @@ private:
     // 左侧区域 (个人信息 + 好友列表)
     QWidget* leftContainer;
     QVBoxLayout* leftLayout;
+
+    QWidget* divider;
+    QWidget* splitHandle;
+    double leftRatio;           // 好友栏占窗口宽度的比例，用户拖过就按用户的来
+    bool draggingSplit;
 
     QWidget* profileWidget;
     QLabel* lbMyAvatar;

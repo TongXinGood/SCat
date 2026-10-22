@@ -3,6 +3,8 @@
 #include "../../Other/include/Theme.h"
 #include "../../Other/include/Motion.h"
 #include <QPixmap>
+#include <QSettings>
+#include <QMouseEvent>
 
 // 左上角自己的头像。比好友列表里的（45）小一号，主次分明
 static const int kMyAvatarSize = 36;
@@ -16,7 +18,10 @@ static const double kLeftRatio = 0.24;
 static const int kLeftMinWidth = 220;
 static const int kLeftMaxWidth = 320;
 
-ScatWindow::ScatWindow(QWidget* parent) : NoFrame(parent)
+static const int kSplitHandleWidth = 7;     // 分隔线左右能拖的范围，线本身只有 1 像素
+static const char* kLeftRatioKey = "layout/leftRatio";
+
+ScatWindow::ScatWindow(QWidget* parent): NoFrame(parent), divider(nullptr), splitHandle(nullptr), leftRatio(kLeftRatio), draggingSplit(false)
 {
     // 1. 配置 NoFrame 的基础属性
     NoFrame::Frameconfig config;
@@ -119,10 +124,10 @@ void ScatWindow::initUI()
     rightStackedWidget->setCurrentIndex(0);
 
     // ================= 组合并应用到 NoFrame =================
-    QWidget* divider = new QWidget(centralWidget);
+    divider = new QWidget(centralWidget);
     divider->setFixedWidth(1);
     divider->setAttribute(Qt::WA_StyledBackground, true);
-    divider->setStyleSheet(Theme::css("background-color: #EAEAEA;"));
+    setDividerActive(false);
 
     mainLayout->addWidget(leftContainer);
     mainLayout->addWidget(divider);
@@ -130,6 +135,18 @@ void ScatWindow::initUI()
     // 核心步骤：将组装好的 centralWidget 交给父类 NoFrame 渲染
     this->setMainWindow(centralWidget);
     centralWidget->installEventFilter(this);
+
+    // 盖在分隔线上的透明拖动区域。不进布局，自己摆位置，永远在最上面
+    splitHandle = new QWidget(centralWidget);
+    splitHandle->setCursor(Qt::SplitHCursor);
+    splitHandle->setToolTip("拖动调整宽度，双击恢复默认");
+    splitHandle->installEventFilter(this);
+    splitHandle->raise();
+
+    // 上次拖出来的比例。存的值不正常就用默认的
+    double saved = QSettings().value(kLeftRatioKey, kLeftRatio).toDouble();
+    if (saved > 0.1 && saved < 0.6)
+        leftRatio = saved;
 }
 
 void ScatWindow::initProfileSection()
@@ -336,11 +353,20 @@ void ScatWindow::updateNotifyPos()
 bool ScatWindow::eventFilter(QObject* watched, QEvent* event)
 {
     // 左侧栏尺寸变了，铃铛跟着挪
-    if (watched == leftContainer && event->type() == QEvent::Resize)
+    if (watched == leftContainer && event->type() == QEvent::Resize) {
         updateNotifyPos();
+        updateSplitHandle();
+    }
 
-    if (watched == centralWidget && event->type() == QEvent::Resize)
+    // 窗口尺寸变了，好友栏按比例跟着变
+    if (watched == centralWidget && event->type() == QEvent::Resize) {
         updateLeftWidth();
+        updateSplitHandle();
+    }
+
+    // 拖动分隔线
+    if (watched == splitHandle && handleSplitEvent(event))
+        return true;
 
     return NoFrame::eventFilter(watched, event);
 }
@@ -441,8 +467,81 @@ void ScatWindow::updateFileState(const QString& msgid, int state,
 
 void ScatWindow::updateLeftWidth()
 {
-    int width = qBound(kLeftMinWidth, qRound(centralWidget->width() * kLeftRatio), kLeftMaxWidth);
+    int width = qBound(kLeftMinWidth, qRound(centralWidget->width() * leftRatio), kLeftMaxWidth);
 
     if (leftContainer->width() != width)
         leftContainer->setFixedWidth(width);
+}
+
+void ScatWindow::updateSplitHandle()
+{
+    if (!splitHandle)
+        return;
+
+    // 分隔线紧挨着好友栏右边，拖动区域以它为中心左右各伸出几像素
+    int x = leftContainer->width() - kSplitHandleWidth / 2;
+    splitHandle->setGeometry(x, 0, kSplitHandleWidth, centralWidget->height());
+    splitHandle->raise();
+}
+
+void ScatWindow::setDividerActive(bool active)
+{
+    divider->setStyleSheet(Theme::css(active ? "background-color: #C9C1D8;"
+        : "background-color: #EAEAEA;"));
+}
+
+bool ScatWindow::handleSplitEvent(QEvent* event)
+{
+    switch (event->type()) {
+    case QEvent::Enter:
+        setDividerActive(true);
+        return false;
+
+    case QEvent::Leave:
+        if (!draggingSplit)
+            setDividerActive(false);
+        return false;
+
+    case QEvent::MouseButtonPress:
+        if (static_cast<QMouseEvent*>(event)->button() != Qt::LeftButton)
+            return false;
+        draggingSplit = true;
+        return true;
+
+    case QEvent::MouseMove: {
+        if (!draggingSplit)
+            return false;
+
+        // 鼠标在哪，好友栏就拉到哪，但不超出上下限。
+        // 记下的是比例，之后再缩放窗口还按这个比例走
+        QMouseEvent* e = static_cast<QMouseEvent*>(event);
+        int x = centralWidget->mapFromGlobal(e->globalPosition().toPoint()).x();
+        int width = qBound(kLeftMinWidth, x, kLeftMaxWidth);
+
+        leftRatio = double(width) / centralWidget->width();
+        leftContainer->setFixedWidth(width);
+        return true;
+    }
+
+    case QEvent::MouseButtonRelease:
+        if (!draggingSplit)
+            return false;
+        draggingSplit = false;
+        if (!splitHandle->underMouse())
+            setDividerActive(false);
+
+        // 松手才存，拖的过程中不用一直写设置
+        QSettings().setValue(kLeftRatioKey, leftRatio);
+        return true;
+
+    case QEvent::MouseButtonDblClick:
+        // 双击恢复默认比例
+        leftRatio = kLeftRatio;
+        QSettings().remove(kLeftRatioKey);
+        updateLeftWidth();
+        return true;
+
+    default:
+        return false;
+    }
 }
