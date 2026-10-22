@@ -24,7 +24,7 @@ ScatWindow::ScatWindow(QWidget* parent) : NoFrame(parent)
     // 修复 2：开启左上角Logo与文本显示
     config.showlogo = true;
     config.showtext = true;
-    config.showmin = true;
+    config.showmin = true; 
     config.showmax = false;                       // 隐藏最大化按钮
     config.showclose = true;
     config.btnsize = QSize(20, 20);
@@ -131,7 +131,7 @@ void ScatWindow::initProfileSection()
     profileWidget->setStyleSheet("border: none;"); // 清除继承下来的右侧边框线影响
 
     QHBoxLayout* profileLayout = new QHBoxLayout(profileWidget);
-    profileLayout->setContentsMargins(14, 6, 16, 6);
+    profileLayout->setContentsMargins(14, 6, 8, 6);
     profileLayout->setSpacing(10);
 
     // 1. 个人头像
@@ -147,14 +147,14 @@ void ScatWindow::initProfileSection()
 
     // 3. 设置按钮
     btnSettings = new QPushButton(profileWidget);
-    btnSettings->setFixedSize(24, 24);
+    btnSettings->setFixedSize(22, 22);
     btnSettings->setCursor(Qt::PointingHandCursor);
     btnSettings->setIcon(Theme::icon(":/Resource/icon/settings.png", QColor("#9C98AA")));
     btnSettings->setIconSize(QSize(18, 18));
-    Motion::addRipple(btnSettings, 12);
+    Motion::addRipple(btnSettings, 11);
     btnSettings->setStyleSheet(Theme::css(
         "QPushButton { border: none; background: transparent; }"
-        "QPushButton:hover { background-color: #F0F0F0; border-radius: 12px; }"
+        "QPushButton:hover { background-color: #F0F0F0; border-radius: 11px; }"
     ));
 
     profileLayout->addWidget(lbMyAvatar);
